@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -31,13 +31,16 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core.apps.CoreConfig'
+    'api.apps.ApiConfig'
 ]
 
 MIDDLEWARE = [
@@ -48,6 +51,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -69,6 +75,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT аутентификация
+    ),
+}
+
+SIMPLE_JWT = {
+"ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+"REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+'ALGORITHM': 'HS256', # шифруем
+'SIGNING_KEY': SECRET_KEY,
+'AUTH_HEADER_TYPES': ('Bearer',),
+'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+'USER_ID_FIELD': 'id',
+'USER_ID_CLAIM': 'user_id',
+"ROTATE_REFRESH_TOKENS": True,
+"BLACKLIST_AFTER_ROTATION": True,
+"AUTH_HEADER_TYPES": ("Bearer",),
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -121,3 +147,8 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]

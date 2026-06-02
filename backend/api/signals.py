@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from core.models import Grade, XPEvent, StudentProfile
+from api.models import Grade, XPEvent, StudentProfile
 
 
 @receiver(post_save, sender=Grade)
