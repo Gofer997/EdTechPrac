@@ -1,15 +1,28 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 
 
 class StudentProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     xp = models.IntegerField(default=0)
     level = models.IntegerField(default=1)
-    group = models.CharField(max_length=64)
+    group = models.CharField(max_length=64, blank=True, default="")
 
     def __str__(self):
         return self.user.username
+
+
+class TeacherInviteCode(models.Model):
+    code = models.CharField(max_length=64, unique=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_valid(self):
+        return self.is_active and self.created_at >= timezone.now() - timedelta(
+            minutes=10
+        )
 
 
 class TeacherProfile(models.Model):

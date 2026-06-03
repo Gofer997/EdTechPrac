@@ -13,7 +13,7 @@ def add_xp_from_grade(sender, instance, created, **kwargs):
     XPEvent.objects.create(
         student=instance.student,
         amount=xp_gain,
-        reason="grade awarded"
+        reason="Выставление оценки",
     )
 
     student = instance.student
