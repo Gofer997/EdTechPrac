@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api.js";
+import Header from "../components/header.jsx";
+import Aside from "../components/aside.jsx";
+import "bootstrap/dist/css/bootstrap.min.css";
+import { Container, Row, Col, Form, Button } from "react-bootstrap";
 
 function Register() {
   const navigate = useNavigate();
@@ -51,46 +55,39 @@ function Register() {
 
   return (
     <div>
-      <h2>Register</h2>
-
-      <form onSubmit={handleSubmit}>
-        <div>
-          <input
-            type="text"
-            name="username"
-            placeholder="Username"
-            value={form.username}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div>
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div>
-          <input
-            type="password"
-            name="password2"
-            placeholder="Repeat password"
-            value={form.password2}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <button type="submit">
-          Register
-        </button>
-      </form>
+      <Header />
+      <Aside />
+      <Container>
+        <Row>
+          <Col>
+            <Form onSubmit={handleSubmit}>
+              <Form.Group>
+                <Form.Label>Username</Form.Label>
+                <Form.Control type="text" name="username" value={form.username} onChange={handleChange} required />
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>Password</Form.Label>
+                <Form.Control type="password" name="password" value={form.password} onChange={handleChange} required />
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>Repeat password</Form.Label>
+                <Form.Control type="password" name="password2" value={form.password2} onChange={handleChange} required />
+              </Form.Group>
+              <Form.Group>
+                <Form.Check type="radio" label="Учитель" name="role" value="teacher" onChange={handleChange} required />
+                <Form.Check type="radio" label="Ученик" name="role" value="student" onChange={handleChange} required />
+              </Form.Group>
+              {form.role === "teacher" && (
+                <Form.Group>
+                  <Form.Label>Код</Form.Label>
+                  <Form.Control type="text" name="code" value={form.code} onChange={handleChange} required />
+                </Form.Group>
+              )}
+              <Button type="submit">Register</Button>
+            </Form>
+          </Col>
+        </Row>
+      </Container>
     </div>
   );
 }

@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api.js"
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js"
+import { Container, Row, Col, Form, Button } from "react-bootstrap";
+import Header from "../components/header.jsx";
+import Footer from "../components/footer.jsx";
+import Aside from "../components/aside.jsx";
 
 function Login() {
   const navigate = useNavigate();
@@ -18,7 +24,7 @@ function Login() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,35 +35,50 @@ function Login() {
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
 
-      navigate("/"); // 👉 в main
+      navigate("/");
     } catch (err) {
       console.log(err.response?.data);
       alert("Неверный логин или пароль");
     }
-  };
+  }
 
   return (
     <div>
-      <h2>Login</h2>
+      <Header />
+      <Aside />
+      <Container>
+      <Row>
+        <Col>
+          <h2>Login</h2>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          name="username"
-          placeholder="Username"
-          onChange={handleChange}
-        />
+          <Form onSubmit={handleSubmit}>
+            <Form.Group>
+              <Form.Label>Username</Form.Label>
+              <Form.Control
+                name="username"
+                placeholder="Username"
+                onChange={handleChange}
+              />
+            </Form.Group>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          onChange={handleChange}
-        />
+            <Form.Group>
+              <Form.Label>Password</Form.Label>
+              <Form.Control
+                type="password"
+                name="password"
+                placeholder="Password"
+                onChange={handleChange}
+              />
+            </Form.Group>
 
-        <button type="submit">Login</button>
-      </form>
+            <Button type="submit">Login</Button>
+          </Form>
+        </Col>
+      </Row>
+    </Container>
+    <Footer />
     </div>
-  );
+  )
 }
 
 export default Login;
