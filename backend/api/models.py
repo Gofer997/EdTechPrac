@@ -9,9 +9,13 @@ class StudentProfile(models.Model):
     xp = models.IntegerField(default=0)
     level = models.IntegerField(default=1)
     group = models.CharField(max_length=64, blank=True, default="")
+    crystals = models.IntegerField(default="0")
 
     def __str__(self):
         return self.user.username
+
+
+
 
 
 class TeacherInviteCode(models.Model):

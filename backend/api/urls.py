@@ -10,6 +10,7 @@ from .views import (
     StudentViewSet,
     TeacherViewSet,
     GenerateTeacherInviteCodeView,
+    ChangeCrystalsView,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -28,4 +29,5 @@ urlpatterns = [
     path("teacher/<int:pk>/", PublicTeacherProfileView.as_view()),
     path("invite-code/", GenerateTeacherInviteCodeView.as_view()),
     path("", include(router.urls)),
+    path("students/<int:student_id>/crystals/",ChangeCrystalsView.as_view()),
 ]

@@ -17,6 +17,23 @@ from api.serializers import (
 from api.permissions import IsTeacher, IsStudent, IsAdmin
 
 
+class ChangeCrystalsView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
+    
+
+    def post(self, request, student_id):
+        amount = int(request.data.get("amount", 0))
+        student = StudentProfile.objects.get(id=student_id)
+        student.crystals += amount
+        if student.crystals < 0:
+            student.crystals = 0
+        student.save()
+        return Response({
+            "student_id": student.id,
+            "crystals": student.crystals
+        })
+
+
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]

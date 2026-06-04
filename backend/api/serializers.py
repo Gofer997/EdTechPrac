@@ -82,7 +82,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentProfile
-        fields = ("username", "xp", "level", "group")
+        fields = ("username", "xp", "level", "group", "crystals")
 
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
