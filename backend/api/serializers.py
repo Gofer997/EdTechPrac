@@ -88,14 +88,19 @@ class LoginSerializer(serializers.Serializer):
 
 class StudentProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
-<<<<<<< Updated upstream
     avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)
     avatar_url = serializers.SerializerMethodField(read_only=True)
+    first_name = serializers.CharField(source="user.first_name", read_only=True)
+    last_name = serializers.CharField(source="user.last_name", read_only=True)
+    email = serializers.CharField(source="user.email", read_only=True)
 
     class Meta:
         model = StudentProfile
         fields = (
             "username",
+            "first_name",
+            "last_name",
+            "email",
             "xp",
             "level",
             "group",
@@ -111,15 +116,6 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         url = obj.avatar.url
         return request.build_absolute_uri(url) if request else url
-=======
-    first_name = serializers.CharField(source="user.first_name", read_only=True)
-    last_name = serializers.CharField(source="user.last_name", read_only=True)
-    email = serializers.CharField(source="user.email", read_only=True)
-
-    class Meta:
-        model = StudentProfile
-        fields = ("username", "first_name", "last_name", "email", "xp", "level", "group")
->>>>>>> Stashed changes
 
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
