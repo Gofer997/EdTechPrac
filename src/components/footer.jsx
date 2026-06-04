@@ -70,11 +70,11 @@ const Footer = () => (
       </div>
     </div>
 
-    <div className="text-center p-3" style={{ backgroundColor: "#003366" }}>
+    <div className="text-center p-3" style={{ backgroundColor: "#0080ff" }}>
       © 2026 Copyright:
-      <a className="text-reset fw-bold" href="https://mdbootstrap.com/">
-        MDBootstrap.com
-      </a>
+      <p className="text-reset fw-bold">
+        EdTech.com
+      </p>
     </div>
   </footer>
 );
