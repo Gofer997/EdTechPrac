@@ -1,6 +1,18 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from api.models import Grade, XPEvent, StudentProfile
+from django.db.models.signals import post_delete
+
+
+@receiver(post_delete, sender=StudentProfile)
+def delete_avatar_on_profile_delete(sender, instance, **kwargs):
+    try:
+        if instance.avatar:
+            storage = instance._meta.get_field("avatar").storage
+            if storage.exists(instance.avatar.name):
+                storage.delete(instance.avatar.name)
+    except Exception:
+        pass
 
 
 @receiver(post_save, sender=Grade)

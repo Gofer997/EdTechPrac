@@ -1,4 +1,5 @@
 from rest_framework import generics, viewsets
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
@@ -51,9 +52,26 @@ class LoginView(generics.GenericAPIView):
 class MyStudentProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = StudentProfileSerializer
     permission_classes = [IsAuthenticated, IsStudent]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_object(self) -> Any:
         return StudentProfile.objects.get(user=self.request.user)
+
+
+class MyStudentAvatarView(APIView):
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def delete(self, request):
+        student = StudentProfile.objects.get(user=request.user)
+        try:
+            if student.avatar:
+                student.avatar.delete(save=False)
+                student.avatar = None
+                student.save()
+
+            return Response({"detail": "Аватар успешно удалён"})
+        except Exception as e:
+            return Response({"detail": "Ошибка при удалении аватара", "error": str(e)}, status=500)
 
 
 class MyTeacherProfileView(generics.RetrieveUpdateAPIView):

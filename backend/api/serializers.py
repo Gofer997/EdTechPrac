@@ -79,10 +79,28 @@ class LoginSerializer(serializers.Serializer):
 
 class StudentProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
+    avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)
+    avatar_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = StudentProfile
-        fields = ("username", "xp", "level", "group", "crystals")
+        fields = (
+            "username",
+            "xp",
+            "level",
+            "group",
+            "crystals",
+            "avatar",
+            "avatar_url",
+        )
+
+    def get_avatar_url(self, obj):
+        if not obj.avatar:
+            return None
+
+        request = self.context.get("request")
+        url = obj.avatar.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class TeacherProfileSerializer(serializers.ModelSerializer):

@@ -4,6 +4,7 @@ from .views import (
     RegisterView,
     LoginView,
     MyStudentProfileView,
+    MyStudentAvatarView,
     MyTeacherProfileView,
     PublicStudentProfileView,
     PublicTeacherProfileView,
@@ -26,8 +27,9 @@ urlpatterns = [
     path("me/student/", MyStudentProfileView.as_view()),
     path("me/teacher/", MyTeacherProfileView.as_view()),
     path("student/<int:pk>/", PublicStudentProfileView.as_view()),
+    path("me/student/avatar/", MyStudentAvatarView.as_view()),
     path("teacher/<int:pk>/", PublicTeacherProfileView.as_view()),
     path("invite-code/", GenerateTeacherInviteCodeView.as_view()),
     path("", include(router.urls)),
-    path("students/<int:student_id>/crystals/",ChangeCrystalsView.as_view()),
+    path("students/<int:student_id>/crystals/", ChangeCrystalsView.as_view()),
 ]
