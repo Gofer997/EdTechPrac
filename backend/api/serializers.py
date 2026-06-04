@@ -17,7 +17,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("username", "password", "password2", "role", "teacher_code")
+        fields = (
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "password",
+            "password2",
+            "role",
+            "teacher_code",
+        )
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password2"]:
@@ -60,13 +69,13 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    email = serializers.EmailField()
     password = serializers.CharField()
 
     def validate(self, attrs):
-        user = authenticate(username=attrs["username"], password=attrs["password"])
+        user = User.objects.filter(email__iexact=attrs["email"]).first()
 
-        if not user:
+        if not user or not user.check_password(attrs["password"]):
             raise serializers.ValidationError("Неверный логин или пароль")
 
         refresh = RefreshToken.for_user(user)
@@ -79,6 +88,7 @@ class LoginSerializer(serializers.Serializer):
 
 class StudentProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
+<<<<<<< Updated upstream
     avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)
     avatar_url = serializers.SerializerMethodField(read_only=True)
 
@@ -101,11 +111,23 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         url = obj.avatar.url
         return request.build_absolute_uri(url) if request else url
+=======
+    first_name = serializers.CharField(source="user.first_name", read_only=True)
+    last_name = serializers.CharField(source="user.last_name", read_only=True)
+    email = serializers.CharField(source="user.email", read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = ("username", "first_name", "last_name", "email", "xp", "level", "group")
+>>>>>>> Stashed changes
 
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
+    first_name = serializers.CharField(source="user.first_name", read_only=True)
+    last_name = serializers.CharField(source="user.last_name", read_only=True)
+    email = serializers.CharField(source="user.email", read_only=True)
 
     class Meta:
         model = TeacherProfile
-        fields = ("username",)
+        fields = ("username", "first_name", "last_name", "email")
