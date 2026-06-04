@@ -8,6 +8,13 @@ const Aside = () => {
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
 
+  const handleLogout = () => {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+
+    window.location.href = "/login";
+  };
+
   return (
     <>
       {!show && (
@@ -31,8 +38,30 @@ const Aside = () => {
         </Offcanvas.Header>
         <Offcanvas.Body>
           <Nav className="flex-column">
-            <Nav.Link href="/Profile">Profile</Nav.Link>
-            <Nav.Link href="/Logout">Logout</Nav.Link>
+            <Button
+              variant="link"
+              href="/profile"
+              style={{
+                color: "black",
+                textDecoration: "none",
+                justifyContent: "flex-start"
+              }}
+            >
+              <span>Profile</span>
+            </Button>
+            {localStorage.getItem("access") && (
+              <Button
+                variant="link"
+                onClick={handleLogout}
+                style={{
+                  color: "black",
+                  textDecoration: "none",
+                  justifyContent: "flex-start"
+                }}
+              >
+                <span>Выйти</span>
+              </Button>
+            )}
           </Nav>
         </Offcanvas.Body>
       </Offcanvas>
