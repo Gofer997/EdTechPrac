@@ -60,6 +60,23 @@ class MyStudentProfileView(generics.RetrieveUpdateAPIView):
 
 class MyStudentAvatarView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def patch(self, request):
+        student = StudentProfile.objects.get(user=request.user)
+        avatar = request.FILES.get("avatar")
+        if not avatar:
+            return Response({"detail": "Файл не передан"}, status=400)
+
+        student.avatar = avatar
+        student.save()
+        return Response({
+            "avatar_url": request.build_absolute_uri(student.avatar.url)
+        })
+
+
+class MyStudentAvatarDeleteView(APIView):
+    permission_classes = [IsAuthenticated, IsStudent]
 
     def delete(self, request):
         student = StudentProfile.objects.get(user=request.user)
