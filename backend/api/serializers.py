@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
-from api.models import TeacherProfile, StudentProfile, TeacherInviteCode
+from api.models import TeacherProfile, StudentProfile, TeacherInviteCode, ShopItem, Purchase
 
 User = get_user_model()
 
@@ -127,3 +127,16 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeacherProfile
         fields = ("username", "first_name", "last_name", "email")
+
+
+class ShopItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShopItem
+        fields = ('id', 'name', 'description', 'price', 'item_type', 'image_url', 'validity_days')
+
+class PurchaseSerializer(serializers.ModelSerializer):
+    item = ShopItemSerializer(read_only=True)
+    
+    class Meta:
+        model = Purchase
+        fields = ('id', 'item', 'status', 'code', 'created_at', 'activated_at', 'expires_at')
