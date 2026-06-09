@@ -32,7 +32,7 @@ function Profile() {
       const formData = new FormData()
       formData.append('avatar', file)
     
-      api.patch('me/student/avatar/', formData, {
+      api.patch('student/avatar/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       .then((response) => {
@@ -49,13 +49,13 @@ function Profile() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const studentResponse = await api.get('me/student/')
+        const studentResponse = await api.get('student/profile/')
         setProfile(studentResponse.data)
         setRole('student')
       } catch (error) {
         if (error.response?.status === 403 || error.response?.status === 404) {
           try {
-            const teacherResponse = await api.get('me/teacher/')
+            const teacherResponse = await api.get('teacher/profile/')
             setProfile(teacherResponse.data)
             setRole('teacher')
           } catch (teacherError) {

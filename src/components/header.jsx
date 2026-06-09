@@ -31,13 +31,13 @@ export default function Header() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const student = await api.get('me/student/')
+        const student = await api.get('student/profile/')
         setProfile(student.data)
         setRole('student')
       } catch (err) {
         if (err.response?.status === 403 || err.response?.status === 404) {
           try {
-            const teacher = await api.get('me/teacher/')
+            const teacher = await api.get('teacher/profile/')
             setProfile(teacher.data)
             setRole('teacher')
           } catch (e) {
