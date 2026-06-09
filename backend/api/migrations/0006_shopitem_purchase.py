@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0005_studentprofile_avatar'),
+        ('api', '0005_remove_assignment_is_retracted'),
     ]
 
     operations = [

@@ -1,12 +1,31 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
-from api.models import TeacherProfile, StudentProfile, TeacherInviteCode, ShopItem, Purchase
+from api.models import TeacherProfile, StudentProfile, TeacherInviteCode, ShopItem, Purchase, Group, Assignment
 
 User = get_user_model()
+
+
+class AssignmentSerializer(serializers.ModelSerializer):
+    effective_status = serializers.SerializerMethodField(read_only=True)
+    teacher = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Assignment
+        fields = "__all__"
+
+    def get_effective_status(self, obj):
+        return obj.effective_status
+
+
+class GroupSerializer(serializers.ModelSerializer):
+    teacher = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Group
+        fields = "__all__"
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -38,12 +57,8 @@ class RegisterSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Требуется код преподавателя")
 
             invite = TeacherInviteCode.objects.filter(code=code, is_active=True).first()
-
-            if not invite:
-                raise serializers.ValidationError("Некорректный код преподавателя")
-
-            if not invite.is_valid():
-                raise serializers.ValidationError("Некорректный код преподавателя")
+            if not invite or not invite.is_valid():
+                raise serializers.ValidationError("Некорректный код преподавателя")
 
         return attrs
 
@@ -76,7 +91,7 @@ class LoginSerializer(serializers.Serializer):
         user = User.objects.filter(email__iexact=attrs["email"]).first()
 
         if not user or not user.check_password(attrs["password"]):
-            raise serializers.ValidationError("Неверный логин или пароль")
+            raise serializers.ValidationError("Неверные учётные данные")
 
         refresh = RefreshToken.for_user(user)
 
@@ -140,3 +155,12 @@ class PurchaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Purchase
         fields = ('id', 'item', 'status', 'code', 'created_at', 'activated_at', 'expires_at')
+        
+__all__ = [
+    "AssignmentSerializer",
+    "GroupSerializer",
+    "RegisterSerializer",
+    "LoginSerializer",
+    "StudentProfileSerializer",
+    "TeacherProfileSerializer",
+]
