@@ -141,7 +141,7 @@ class ShopItem(models.Model):
 class Purchase(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Ожидает получения'),
-        ('activated', 'Активировано'),
+        ('received', 'Получено'),
         ('expired', 'Истёк срок'),
     )
 
