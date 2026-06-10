@@ -1,5 +1,5 @@
 from rest_framework import generics, viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
@@ -7,11 +7,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django.utils import timezone
 from django.db import transaction
-
+from django.http import JsonResponse
 
 from typing import Any
 import secrets
-from django.utils import timezone
 
 from api.models import (
     Assignment,
@@ -38,6 +37,10 @@ from api.serializers import (
     LessonCreateSerializer,
 )
 
+from api.permissions import ( 
+    IsTeacher, IsStudent, IsAdmin 
+)
+
 __all__ = [
     "RegisterView",
     "LoginView",
@@ -48,7 +51,6 @@ __all__ = [
     "StudentJoinGroupView",
     "LessonViewSet",
 ]
-from api.permissions import IsTeacher, IsStudent, IsAdmin
 
 class ShopItemListView(generics.ListAPIView):
     """Витрина товаров для учеников"""
@@ -596,3 +598,8 @@ class GenerateTeacherInviteCodeView(APIView):
             "code": obj.code,
             "expires_in_minutes": obj.ttl_minutes,
         })
+
+@api_view(['GET'])
+def trigger_error_view(request):
+    bad_calc = 1 / 0 
+    return JsonResponse({"message": "something"})

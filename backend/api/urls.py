@@ -22,6 +22,7 @@ from api.views import (
     StudentJoinGroupView,
     LessonViewSet,
 )
+from . import views
 from api.views_admin import AdminDashboardView, AdminInviteCodeView, AdminGroupLessonsView, AdminGroupLessonDetailView
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -55,5 +56,6 @@ urlpatterns = [
     path("teachers/student/<int:student_id>/purchases/", TeacherStudentPurchasesView.as_view(), name="teacher-student-purchases"),
     path("lessons/", LessonViewSet.as_view({"get": "list", "post": "create"}), name="lesson-list"),
     path("lessons/<int:pk>/", LessonViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}), name="lesson-detail"),
+    path('test-error/', views.trigger_error_view, name='test-error'),
 
 ]
