@@ -9,6 +9,34 @@ from django.core.files.base import ContentFile
 from PIL import Image, ImageOps
 
 
+WEEKDAY_CHOICES = (
+    (0, "Понедельник"),
+    (1, "Вторник"),
+    (2, "Среда"),
+    (3, "Четверг"),
+    (4, "Пятница"),
+    (5, "Суббота"),
+    (6, "Воскресенье"),
+)
+
+
+class Lesson(models.Model):
+    group = models.ForeignKey("Group", on_delete=models.CASCADE, related_name="lessons")
+    subject = models.ForeignKey("Subject", on_delete=models.CASCADE, related_name="lessons")
+    teacher = models.ForeignKey("TeacherProfile", on_delete=models.CASCADE, related_name="lessons")
+    weekday = models.IntegerField(choices=WEEKDAY_CHOICES)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    room = models.CharField(max_length=64, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["weekday", "start_time"]
+
+    def __str__(self):
+        return f"{self.group.name} — {self.subject.name} ({self.get_weekday_display()})"
+
 class Group(models.Model):
     name = models.CharField(max_length=128)
     teacher = models.ForeignKey("TeacherProfile", on_delete=models.CASCADE, related_name="groups")
@@ -193,7 +221,7 @@ class GroupInviteCode(models.Model):
 
 
 class Subject(models.Model):
-    name = models.CharField(max_length=128)
+    name = models.CharField(max_length=128, unique=True)
 
     def __str__(self):
         return self.name

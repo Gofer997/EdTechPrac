@@ -20,7 +20,9 @@ from api.views import (
     TeacherStudentPurchasesView,
     GroupInviteCodeView,
     StudentJoinGroupView,
+    LessonViewSet,
 )
+from api.views_admin import AdminDashboardView, AdminInviteCodeView, AdminGroupLessonsView, AdminGroupLessonDetailView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 router = DefaultRouter()
@@ -41,11 +43,17 @@ urlpatterns = [
     path("change-crystals/<int:student_id>/", ChangeCrystalsView.as_view()),
     path("groups/invite-code/", GroupInviteCodeView.as_view()),
     path("student/join-group/", StudentJoinGroupView.as_view()),
+    path("admin/dashboard/", AdminDashboardView.as_view()),
+    path("admin/invite-code/", AdminInviteCodeView.as_view()),
+    path("admin/groups/<int:group_id>/lessons/", AdminGroupLessonsView.as_view(), name="admin-group-lessons"),
+    path("admin/groups/<int:group_id>/lessons/<int:lesson_id>/", AdminGroupLessonDetailView.as_view(), name="admin-group-lesson-detail"),
     path("", include(router.urls)),
     path("shop/items/", ShopItemListView.as_view(), name="shop-items"),
     path("shop/buy/<int:item_id>/", BuyItemView.as_view(), name="shop-buy"),
     path("shop/my-purchases/", MyPurchasesView.as_view(), name="shop-my-purchases"),
     path("shop/my-purchases/<int:purchase_id>/activate/", ActivatePurchaseView.as_view(), name="shop-activate"),
     path("teachers/student/<int:student_id>/purchases/", TeacherStudentPurchasesView.as_view(), name="teacher-student-purchases"),
+    path("lessons/", LessonViewSet.as_view({"get": "list", "post": "create"}), name="lesson-list"),
+    path("lessons/<int:pk>/", LessonViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}), name="lesson-detail"),
 
 ]

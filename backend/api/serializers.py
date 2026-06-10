@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
-from api.models import TeacherProfile, StudentProfile, TeacherInviteCode, ShopItem, Purchase, Group, Assignment
+from api.models import TeacherProfile, StudentProfile, TeacherInviteCode, ShopItem, Purchase, Group, Assignment, Subject, Lesson
 
 User = get_user_model()
 
@@ -144,6 +144,25 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         fields = ("username", "first_name", "last_name", "email")
 
 
+class LessonSerializer(serializers.ModelSerializer):
+    teacher = serializers.PrimaryKeyRelatedField(read_only=True)
+    group = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all())
+    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all())
+
+    class Meta:
+        model = Lesson
+        fields = "__all__"
+
+
+class LessonCreateSerializer(serializers.ModelSerializer):
+    group = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all(), required=False, allow_null=True)
+
+    class Meta:
+        model = Lesson
+        fields = ("id", "group", "subject", "weekday", "start_time", "end_time", "room", "is_active")
+        read_only_fields = ("id",)
+
+
 class ShopItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShopItem
@@ -163,4 +182,5 @@ __all__ = [
     "LoginSerializer",
     "StudentProfileSerializer",
     "TeacherProfileSerializer",
+    "LessonSerializer",
 ]

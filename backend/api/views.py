@@ -22,6 +22,8 @@ from api.models import (
     TeacherInviteCode,
     ShopItem,
     Purchase,
+    Subject,
+    Lesson,
 )
 from api.serializers import (
     RegisterSerializer,
@@ -32,6 +34,8 @@ from api.serializers import (
     TeacherProfileSerializer,
     GroupSerializer,
     AssignmentSerializer,
+    LessonSerializer,
+    LessonCreateSerializer,
 )
 
 __all__ = [
@@ -42,6 +46,7 @@ __all__ = [
     "StudentAssignmentFeedView",
     "GroupInviteCodeView",
     "StudentJoinGroupView",
+    "LessonViewSet",
 ]
 from api.permissions import IsTeacher, IsStudent, IsAdmin
 
@@ -438,6 +443,61 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         kwargs["partial"] = True
         return self.update(request, *args, **kwargs)
+
+
+class LessonViewSet(viewsets.ModelViewSet):
+    serializer_class = LessonSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        teacher = TeacherProfile.objects.filter(user=user).first()
+        if teacher:
+            return Lesson.objects.filter(teacher=teacher)
+        student = StudentProfile.objects.filter(user=user).first()
+        if student and student.group.pk:
+            return Lesson.objects.filter(group_id=student.group.pk)
+        return Lesson.objects.none()
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return LessonCreateSerializer
+        return LessonSerializer
+
+    def perform_create(self, serializer):
+        teacher = TeacherProfile.objects.filter(user=self.request.user).first()
+        if not teacher:
+            raise PermissionDenied("Создавать уроки могут только преподаватели")
+
+        validated = serializer.validated_data
+        group = validated.get("group")
+        group_teacher = getattr(group, "teacher", None)
+        if group_teacher != teacher:
+            raise PermissionDenied("Невозможно поставить урок не в свою группу")
+
+        serializer.save(teacher=teacher)
+
+    def perform_update(self, serializer):
+        lesson = self.get_object()
+        teacher = TeacherProfile.objects.filter(user=self.request.user).first()
+        if not teacher:
+            raise PermissionDenied("Изменять уроки могут только преподаватели")
+        if lesson.teacher != teacher:
+            raise PermissionDenied("Вы можете редактировать только свои уроки")
+
+        validated = serializer.validated_data
+        group = validated.get("group", lesson.group)
+        group_teacher = getattr(group, "teacher", None)
+        if group_teacher != teacher:
+            raise PermissionDenied("Невозможно перевести урок в группу другого преподавателя")
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        teacher = TeacherProfile.objects.filter(user=self.request.user).first()
+        if not teacher or instance.teacher != teacher:
+            raise PermissionDenied("Вы можете удалять только свои уроки")
+        super().perform_destroy(instance)
 
 
 class StudentAssignmentFeedView(generics.ListAPIView):
