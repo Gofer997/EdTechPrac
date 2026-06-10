@@ -1,5 +1,5 @@
 from rest_framework import generics, viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
@@ -7,11 +7,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django.utils import timezone
 from django.db import transaction
-
+from django.http import JsonResponse
 
 from typing import Any
 import secrets
-from django.utils import timezone
 
 from api.models import (
     Assignment,
@@ -22,6 +21,8 @@ from api.models import (
     TeacherInviteCode,
     ShopItem,
     Purchase,
+    Subject,
+    Lesson,
 )
 from api.serializers import (
     RegisterSerializer,
@@ -32,6 +33,12 @@ from api.serializers import (
     TeacherProfileSerializer,
     GroupSerializer,
     AssignmentSerializer,
+    LessonSerializer,
+    LessonCreateSerializer,
+)
+
+from api.permissions import ( 
+    IsTeacher, IsStudent, IsAdmin 
 )
 
 __all__ = [
@@ -42,8 +49,8 @@ __all__ = [
     "StudentAssignmentFeedView",
     "GroupInviteCodeView",
     "StudentJoinGroupView",
+    "LessonViewSet",
 ]
-from api.permissions import IsTeacher, IsStudent, IsAdmin
 
 class ShopItemListView(generics.ListAPIView):
     """Витрина товаров для учеников"""
@@ -446,6 +453,61 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         return self.update(request, *args, **kwargs)
 
 
+class LessonViewSet(viewsets.ModelViewSet):
+    serializer_class = LessonSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        teacher = TeacherProfile.objects.filter(user=user).first()
+        if teacher:
+            return Lesson.objects.filter(teacher=teacher)
+        student = StudentProfile.objects.filter(user=user).first()
+        if student and student.group.pk:
+            return Lesson.objects.filter(group_id=student.group.pk)
+        return Lesson.objects.none()
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return LessonCreateSerializer
+        return LessonSerializer
+
+    def perform_create(self, serializer):
+        teacher = TeacherProfile.objects.filter(user=self.request.user).first()
+        if not teacher:
+            raise PermissionDenied("Создавать уроки могут только преподаватели")
+
+        validated = serializer.validated_data
+        group = validated.get("group")
+        group_teacher = getattr(group, "teacher", None)
+        if group_teacher != teacher:
+            raise PermissionDenied("Невозможно поставить урок не в свою группу")
+
+        serializer.save(teacher=teacher)
+
+    def perform_update(self, serializer):
+        lesson = self.get_object()
+        teacher = TeacherProfile.objects.filter(user=self.request.user).first()
+        if not teacher:
+            raise PermissionDenied("Изменять уроки могут только преподаватели")
+        if lesson.teacher != teacher:
+            raise PermissionDenied("Вы можете редактировать только свои уроки")
+
+        validated = serializer.validated_data
+        group = validated.get("group", lesson.group)
+        group_teacher = getattr(group, "teacher", None)
+        if group_teacher != teacher:
+            raise PermissionDenied("Невозможно перевести урок в группу другого преподавателя")
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        teacher = TeacherProfile.objects.filter(user=self.request.user).first()
+        if not teacher or instance.teacher != teacher:
+            raise PermissionDenied("Вы можете удалять только свои уроки")
+        super().perform_destroy(instance)
+
+
 class StudentAssignmentFeedView(generics.ListAPIView):
     serializer_class = AssignmentSerializer
     permission_classes = [IsAuthenticated, IsStudent]
@@ -542,3 +604,8 @@ class GenerateTeacherInviteCodeView(APIView):
             "code": obj.code,
             "expires_in_minutes": obj.ttl_minutes,
         })
+
+@api_view(['GET'])
+def trigger_error_view(request):
+    bad_calc = 1 / 0 
+    return JsonResponse({"message": "something"})
