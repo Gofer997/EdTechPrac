@@ -31,15 +31,15 @@ export default function Header() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const student = await api.get('student/profile/')
-        setProfile(student.data)
-        setRole('student')
+        const teacher = await api.get('teacher/profile/')
+        setProfile(teacher.data)
+        setRole('teacher')
       } catch (err) {
         if (err.response?.status === 403 || err.response?.status === 404) {
           try {
-            const teacher = await api.get('teacher/profile/')
-            setProfile(teacher.data)
-            setRole('teacher')
+            const student = await api.get('student/profile/')
+            setProfile(student.data)
+            setRole('student')
           } catch (e) {
             console.error('No profile', e)
           }
@@ -53,6 +53,7 @@ export default function Header() {
 
     fetchProfile()
   }, [])
+
 
   const handleLogout = () => {
     localStorage.removeItem('access')
@@ -118,42 +119,45 @@ export default function Header() {
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu className="p-3 profile-popup shadow-lg" style={{ minWidth: 320 }}>
-                  <Row className="align-items-center mb-3">
-                    <Col xs="auto">
-                      <Image
-                        src={profile.avatar_url || '/default-avatar.png'}
-                        roundedCircle
-                        width={72}
-                        height={72}
-                        alt="avatar"
-                        className="border"
-                      />
-                    </Col>
-                    <Col>
-                      <div className="fw-bold">{profile.first_name ? `${profile.first_name} ${profile.last_name || ''}` : profile.username}</div>
-                      <div className="text-muted small">{profile.group || profile.username}</div>
-                    </Col>
-                  </Row>
-
-                  <Row className="mb-3">
-                    <Col className="d-flex justify-content-center">
-                      <Stat
-                        icon={<span className="stat-badge star">★</span>}
-                        value={profile.xp ?? 0}
-                        label="XP"
-                      />
-                      <Stat
-                        icon={<span className="stat-badge coin">●</span>}
-                        value={profile.level ?? 0}
-                        label="Level"
-                      />
-                      <Stat
-                        icon={<span className="stat-badge gem">◆</span>}
-                        value={profile.crystals ?? 0}
-                        label="Crystals"
-                      />
-                    </Col>
-                  </Row>
+                  {profile && (
+                    <div className="mb-4 p-3 bg-light rounded">
+                      <Row className="align-items-center mb-3">
+                        <Col xs="auto">
+                          <Image
+                            src={profile.avatar_url || "/default-avatar.png"}
+                            roundedCircle
+                            width={48}
+                            height={48}
+                            className="border"
+                          />
+                        </Col>
+                        <Col>
+                          <div className="fw-bold" style={{ fontSize: "14px" }}>
+                            {profile.first_name || profile.username}
+                          </div>
+                          <Badge bg={role === "teacher" ? "success" : "info"} className="mt-1" style={{ fontSize: "11px" }}>
+                            {role === "teacher" ? "Преподаватель" : "Студент"}
+                          </Badge>
+                        </Col>
+                      </Row>
+                      <Row className="text-center" style={{ fontSize: "12px" }}>
+                        <Col>
+                          <div className="fw-bold">{profile.xp ?? 0}</div>
+                          <div className="text-muted">XP</div>
+                        </Col>
+                        <Col>
+                          <div className="fw-bold">{profile.level ?? 1}</div>
+                          <div className="text-muted">Уровень</div>
+                        </Col>
+                        {role === "student" && (
+                          <Col>
+                            <div className="fw-bold">{profile.crystals ?? 0}</div>
+                            <div className="text-muted">💎</div>
+                          </Col>
+                        )}
+                      </Row>
+                    </div>
+                  )}
 
                   <div className="profile-menu">
                     <a className="d-block profile-menu-item" href="/profile">Профиль</a>

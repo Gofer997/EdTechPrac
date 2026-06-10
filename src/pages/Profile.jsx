@@ -26,53 +26,88 @@ function Profile() {
   const [uploading, setUploading] = useState(false)
   const avatarInputRef = useRef(null)
 
-  const handleAvatarChange = (event) => {
+  const handleAvatarChange = async (event) => {
     const file = event.target.files[0]
-    if (file) {
+    if (!file) return
+
+    setUploading(true)
+    setError('')
+
+    try {
       const formData = new FormData()
       formData.append('avatar', file)
-    
-      api.patch('student/avatar/', formData, {
+
+      const endpoint = role === 'teacher'
+        ? 'teacher/avatar/'
+        : role === 'student'
+          ? 'student/avatar/'
+          : null
+
+      if (!endpoint) {
+        setError('Роль не определена, попробуйте позже')
+        return
+      }
+
+      const uploadResponse = await api.patch(endpoint, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      .then((response) => {
-        setProfile((prev) => ({ ...prev, avatar_url: response.data.avatar_url }))
-      })
-      .catch((error) => {
-        console.error(error)
-        setError('Ошибка загрузки аватарки')
-      })
+      const profileEndpoint = role === 'teacher' ? 'teacher/profile/' : 'student/profile/'
+      const profileResponse = await api.get(profileEndpoint)
+
+      if (profileResponse.data.avatar_url) {
+        profileResponse.data.avatar_url = `${profileResponse.data.avatar_url}?t=${Date.now()}`
+      }
+
+      setProfile(profileResponse.data)
+    } catch (err) {
+      console.error(err)
+      setError('Ошибка загрузки аватарки')
+    } finally {
+      setUploading(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ''
     }
   }
+
+
 
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const studentResponse = await api.get('student/profile/')
-        setProfile(studentResponse.data)
-        setRole('student')
+        const endpoint = role === 'teacher' ? 'teacher/profile/' : 'student/profile/'
+        const response = await api.get(endpoint)
+        setProfile(response.data)
       } catch (error) {
-        if (error.response?.status === 403 || error.response?.status === 404) {
-          try {
-            const teacherResponse = await api.get('teacher/profile/')
-            setProfile(teacherResponse.data)
-            setRole('teacher')
-          } catch (teacherError) {
-            console.error(teacherError)
-            setError('Не удалось загрузить профиль')
-          }
-        } else {
-          console.error(error)
-          setError(<a href="/login">Попробуйте войти в аккаунт</a>)
-        }
+        console.error(error)
+        setError(<a href="/login">Попробуйте войти в аккаунт</a>)
       } finally {
         setLoading(false)
       }
     }
-
-    fetchData()
-  }, [])
+  
+    if (!role) {
+      (async () => {
+        try {
+          const teacherResponse = await api.get('teacher/profile/')
+          setProfile(teacherResponse.data)
+          setRole('teacher')
+        } catch {
+          try {
+            const studentResponse = await api.get('student/profile/')
+            setProfile(studentResponse.data)
+            setRole('student')
+          } catch (err) {
+            console.error(err)
+            setError(<a href="/login">Попробуйте войти в аккаунт</a>)
+          } finally {
+            setLoading(false)
+          }
+        }
+      })()
+    } else {
+      fetchData()
+    }
+  }, [role])
 
   return (
     <div>
