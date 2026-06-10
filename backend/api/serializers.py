@@ -135,13 +135,23 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
+    avatar = serializers.ImageField(write_only=True, required=False, allow_null=True)
+    avatar_url = serializers.SerializerMethodField(read_only=True)
     first_name = serializers.CharField(source="user.first_name", read_only=True)
     last_name = serializers.CharField(source="user.last_name", read_only=True)
     email = serializers.CharField(source="user.email", read_only=True)
 
     class Meta:
         model = TeacherProfile
-        fields = ("username", "first_name", "last_name", "email")
+        fields = ("username", "first_name", "last_name", "email", "avatar", "avatar_url")
+
+    def get_avatar_url(self, obj):
+        if not obj.avatar:
+            return None
+
+        request = self.context.get("request")
+        url = obj.avatar.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class ShopItemSerializer(serializers.ModelSerializer):

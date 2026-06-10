@@ -1,6 +1,6 @@
 from rest_framework.permissions import BasePermission
 from django.contrib import admin
-from .models import ShopItem, Purchase
+from .models import ShopItem, Purchase, TeacherInviteCode
 
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
@@ -22,10 +22,15 @@ class PurchaseAdmin(admin.ModelAdmin):
     list_filter = ('status', 'created_at')
     search_fields = ('code', 'student__user__username', 'item__name')
     readonly_fields = ('code', 'created_at', 'activated_at')
-    
-    # Действие: Массово пометить как истекшие (если нужно вручную)
     actions = ['mark_as_expired']
 
     @admin.action(description="Пометить выбранные как истёкшие")
     def mark_as_expired(self, request, queryset):
         queryset.filter(status='pending').update(status='expired')
+
+@admin.register(TeacherInviteCode)
+class TeacherInviteCodeAdmin(admin.ModelAdmin):
+    list_display = ('code', 'is_active', 'max_uses', 'used_count', 'expires_at', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('code',)
+    readonly_fields = ('created_at',)

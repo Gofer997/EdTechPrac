@@ -183,19 +183,25 @@ class MyStudentProfileView(generics.RetrieveUpdateAPIView):
 
 
 class MyStudentAvatarView(APIView):
-    permission_classes = [IsAuthenticated, IsStudent]
+    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def patch(self, request):
-        student = StudentProfile.objects.get(user=request.user)
+        if hasattr(request.user, "studentprofile"):
+            profile = request.user.studentprofile
+        elif hasattr(request.user, "teacherprofile"):
+            profile = request.user.teacherprofile
+        else:
+            return Response({"detail": "Нет профиля"}, status=400)
+
         avatar = request.FILES.get("avatar")
         if not avatar:
             return Response({"detail": "Файл не передан"}, status=400)
 
-        student.avatar = avatar
-        student.save()
+        profile.avatar = avatar
+        profile.save()
         return Response({
-            "avatar_url": request.build_absolute_uri(student.avatar.url)
+            "avatar_url": request.build_absolute_uri(profile.avatar.url)
         })
 
 

@@ -35,6 +35,7 @@ urlpatterns = [
     path("student/profile/", MyStudentProfileView.as_view()),
     path("student/avatar/", MyStudentAvatarView.as_view()),
     path("teacher/profile/", MyTeacherProfileView.as_view()),
+    path("teacher/avatar/", MyStudentAvatarView.as_view()),
     path("public/students/<int:pk>/", PublicStudentProfileView.as_view()),
     path("public/teachers/<int:pk>/", PublicTeacherProfileView.as_view()),
     path("invite-code/", GenerateTeacherInviteCodeView.as_view()),
