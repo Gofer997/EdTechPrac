@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 from io import BytesIO
+from django.core.validators import MinValueValidator, MaxValueValidator
 from rest_framework.response import Response
 from django.utils.crypto import get_random_string
 from django.core.files.base import ContentFile
@@ -156,6 +157,12 @@ class Assignment(models.Model):
 
     title = models.CharField(max_length=256)
     description = models.TextField(blank=True)
+    answer = models.CharField(max_length=4096, blank=True, default="")
+    grade = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(12)]
+    )
+    feedback = models.TextField(max_length=4096, blank=True, default="")
 
     teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE, related_name="assignments")
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="assignments")

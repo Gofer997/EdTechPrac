@@ -361,20 +361,28 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied(
                     "Вы не состоите в этой группе"
                 )
-            # предполагается переход issued -> submitted
-            # (issued = препод выдал задание, submitted = студент отправил задание [т.е. решение, грубо говоря])
-            # ниже ловим отклонения от этой логики.
+
+            invalid_fields = set(request.data.keys()) - {"status", "answer"}
+            if invalid_fields:
+                raise PermissionDenied(
+                    f"Недопустимые поля: {', '.join(invalid_fields)}. "
+                    "Нужны только: status, answer."
+                )
+
+            new_status = request.data.get("status")
+            answer_text = request.data.get("answer")
+
             if new_status != Assignment.Status.SUBMITTED:
                 raise PermissionDenied("Можно отправлять только сделанное задание (status = submitted)")
 
+            if not answer_text or not isinstance(answer_text, str) or len(answer_text.strip()) == 0:
+                raise PermissionDenied("Ответ не может быть пустым (минимум 1 символ)")
+
+            if len(answer_text) > 4096:
+                raise PermissionDenied("Ответ не может быть длиннее 4096 символов")
+
             if assignment.status != Assignment.Status.ISSUED:
                 raise PermissionDenied("Отправить решение можно только в ответ на выданное задание")
-
-            invalid_fields = set(request.data.keys()) - {"status"}
-            if invalid_fields:
-                raise PermissionDenied(
-                    "Можно отправлять только сделанное задание (status = submitted)"
-                )
 
             if "group" in request.data and request.data["group"] != assignment.group.id:
                 raise PermissionDenied("Вы не можете изменить группу этого задания")
@@ -405,7 +413,6 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                     raise PermissionDenied(
                         "Преподаватели не могут отмечать задания как сданные"
                     )
-                    # тоже логично. сдают сделанные задания студенты, а не преподы
 
                 if (
                     new_status == Assignment.Status.UNDER_REVIEW
@@ -415,26 +422,26 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                         "Перевести на проверку можно только после сдачи"
                     )
 
-                if (
-                    new_status == Assignment.Status.GRADED
-                    and assignment.status != Assignment.Status.UNDER_REVIEW
-                ):
-                    raise PermissionDenied(
-                        "Поставить оценку можно только после проверки"
-                    )
-                    # типа препод когда ему студент сдал решённое задание,
-                    # он его переводит в under_review
-                    # и далее после этого шага он уже может выставить оценку
-                    # на всякий случай я сделал именно так но в целом можно выпилить эту логику
-                    # чтобы как только студент отправил решение то препод мог сразу поставить оценку
-                    # но это типо странно будет
+                if new_status == Assignment.Status.GRADED:
+                    if assignment.status != Assignment.Status.UNDER_REVIEW:
+                        raise PermissionDenied(
+                            "Поставить оценку можно только после проверки"
+                        )
+                    grade_val = request.data.get("grade")
+                    if grade_val is None:
+                        raise PermissionDenied("Требуется поле grade (1-12)")
+                    try:
+                        grade_int = int(grade_val)
+                    except (TypeError, ValueError):
+                        raise PermissionDenied("grade должен быть числом от 1 до 12")
+                    if not (1 <= grade_int <= 12):
+                        raise PermissionDenied("grade должен быть числом от 1 до 12")
 
                 if (
                     new_status == Assignment.Status.REVOKED
                     and assignment.status == Assignment.Status.REVOKED
                 ):
                     raise PermissionDenied("Задание уже отозвано")
-                    # отозвать отозванное задание - бред. поэтому хендлим это
 
                 if (
                     assignment.status == Assignment.Status.GRADED
@@ -442,6 +449,18 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 ):
                     raise PermissionDenied(
                         "Оценённое задание можно только отозвать"
+                    )
+
+                if new_status != Assignment.Status.GRADED:
+                    if "grade" in request.data or "feedback" in request.data:
+                        raise PermissionDenied(
+                            "grade можно задать только при выставлении статуса GRADED, "
+                            "feedback — только при выставлении grade"
+                        )
+            else:
+                if "grade" in request.data:
+                    raise PermissionDenied(
+                        "grade можно задать только при выставлении статуса GRADED"
                     )
         else:
             raise PermissionDenied("Хм. Вы и не препод и не студент.. Как так..")
