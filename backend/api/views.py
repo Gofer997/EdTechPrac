@@ -50,6 +50,7 @@ __all__ = [
     "GroupInviteCodeView",
     "StudentJoinGroupView",
     "LessonViewSet",
+    "ScheduleView",
 ]
 
 class ShopItemListView(generics.ListAPIView):
@@ -153,7 +154,7 @@ class ChangeCrystalsView(APIView):
         if not teacher:
             raise PermissionDenied("Только преподы могут выдавать кристалики")
         student = StudentProfile.objects.get(id=student_id)
-        if student.group and student.group.teacher != teacher:
+        if student.group and not student.group.teachers.filter(pk=teacher.pk).exists():
             raise PermissionDenied("Этот студент не в вашей группе")
         amount = int(request.data.get("amount", 0))
         student.crystals += amount
@@ -303,16 +304,16 @@ class GroupViewSet(viewsets.ModelViewSet):
         teacher = TeacherProfile.objects.filter(user=self.request.user).first()
         if not teacher:
             raise PermissionDenied("Создавать группы могут только преподаватели")
-        serializer.save(teacher=teacher)
+        serializer.save(teachers=[teacher])
 
     def perform_update(self, serializer):
         group = self.get_object()
-        if group.teacher.user != self.request.user:
+        if not group.teachers.filter(user=self.request.user).exists():
             raise PermissionDenied("Только препод который владеет группой может её редачить")
         serializer.save()
 
     def perform_destroy(self, instance):
-        if instance.teacher.user != self.request.user:
+        if not instance.teachers.filter(user=self.request.user).exists():
             raise PermissionDenied("Только препод который владеет группой может её удалить")
         instance.delete()
 
@@ -342,7 +343,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Только преподы могут выдавать задания")
 
         group = serializer.validated_data.get("group")
-        if group.teacher != teacher:
+        if not group.teachers.filter(pk=teacher.pk).exists():
             raise PermissionDenied(
                 "Это не ваша группа!"
             )
@@ -499,6 +500,73 @@ class LessonViewSet(viewsets.ModelViewSet):
         validated = serializer.validated_data
         group = validated.get("group")
         group_teacher = getattr(group, "teacher", None)
+
+
+class ScheduleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+
+        week_start_str = request.query_params.get("week_start")
+        if week_start_str:
+            try:
+                week_start = datetime.strptime(week_start_str, "%Y-%m-%d").date()
+            except ValueError:
+                return Response({"detail": "Некорректный формат даты"}, status=400)
+        else:
+            today = timezone.now().date()
+            week_start = today - timedelta(days=today.weekday())
+
+        week_end = week_start + timedelta(days=6)
+
+        user = request.user
+        teacher = TeacherProfile.objects.filter(user=user).first()
+        student = StudentProfile.objects.filter(user=user).first()
+
+        lessons = Lesson.objects.none()
+
+        if teacher:
+            lessons = Lesson.objects.filter(teacher=teacher, date__range=[week_start, week_end])
+        elif student and student.group:
+            lessons = Lesson.objects.filter(group=student.group, date__range=[week_start, week_end])
+
+        serializer = LessonSerializer(lessons, many=True)
+        return Response({
+            "week_start": week_start.strftime("%Y-%m-%d"),
+            "week_end": week_end.strftime("%Y-%m-%d"),
+            "lessons": serializer.data
+        })
+
+
+class LessonViewSet(viewsets.ModelViewSet):
+    serializer_class = LessonSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        teacher = TeacherProfile.objects.filter(user=user).first()
+        if teacher:
+            return Lesson.objects.filter(teacher=teacher)
+        student = StudentProfile.objects.filter(user=user).first()
+        if student and student.group.pk:
+            return Lesson.objects.filter(group_id=student.group.pk)
+        return Lesson.objects.none()
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return LessonCreateSerializer
+        return LessonSerializer
+
+    def perform_create(self, serializer):
+        teacher = TeacherProfile.objects.filter(user=self.request.user).first()
+        if not teacher:
+            raise PermissionDenied("Создавать уроки могут только преподаватели")
+
+        validated = serializer.validated_data
+        group = validated.get("group")
+        group_teacher = getattr(group, "teacher", None)
         if group_teacher != teacher:
             raise PermissionDenied("Невозможно поставить урок не в свою группу")
 
@@ -557,7 +625,7 @@ class GroupInviteCodeView(APIView):
         except Group.DoesNotExist:
             return Response({"detail": "Такая группа не существует"}, status=404)
 
-        if group.teacher != teacher:
+        if not group.teachers.filter(pk=teacher.pk).exists():
             raise PermissionDenied("Вы не владеете этой группой")
 
         max_uses = int(request.data.get("max_uses", 1))

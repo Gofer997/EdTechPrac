@@ -23,9 +23,9 @@ WEEKDAY_CHOICES = (
 
 class Lesson(models.Model):
     group = models.ForeignKey("Group", on_delete=models.CASCADE, related_name="lessons")
-    subject = models.ForeignKey("Subject", on_delete=models.CASCADE, related_name="lessons")
-    teacher = models.ForeignKey("TeacherProfile", on_delete=models.CASCADE, related_name="lessons")
-    weekday = models.IntegerField(choices=WEEKDAY_CHOICES)
+    subject = models.CharField(max_length=128)
+    teacher = models.CharField(max_length=128)
+    date = models.DateField(null=True, blank=True)
     start_time = models.TimeField()
     end_time = models.TimeField()
     room = models.CharField(max_length=64, blank=True)
@@ -33,14 +33,14 @@ class Lesson(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["weekday", "start_time"]
+        ordering = ["date", "start_time"]
 
     def __str__(self):
-        return f"{self.group.name} — {self.subject.name} ({self.get_weekday_display()})"
+        return f"{self.group.name} — {self.subject} ({self.date})"
 
 class Group(models.Model):
     name = models.CharField(max_length=128)
-    teacher = models.ForeignKey("TeacherProfile", on_delete=models.CASCADE, related_name="groups")
+    teachers = models.ManyToManyField("TeacherProfile", related_name="groups", blank=True)
 
     def __str__(self):
         return self.name
@@ -258,7 +258,7 @@ class GroupInviteCode(models.Model):
     def use(self, student):
         if not self.is_valid():
             raise ValueError("Инвайткод группы не действителен")
-        if self.group.teacher != self.teacher:
+        if not self.group.teachers.filter(pk=self.teacher.pk).exists():
             raise ValueError("Это не ваша группа!")
         self.used_count += 1
         if self.used_count >= self.max_uses:

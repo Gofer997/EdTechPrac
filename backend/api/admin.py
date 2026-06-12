@@ -1,12 +1,11 @@
 from django.contrib import admin
-from .models import ShopItem, Purchase, Subject, Lesson, Group, TeacherInviteCode
+from .models import ShopItem, Purchase, Subject, Lesson, Group, TeacherInviteCode, GroupInviteCode
 
 
 class LessonInline(admin.TabularInline):
     model = Lesson
     extra = 0
-    fields = ('subject', 'teacher', 'weekday', 'start_time', 'end_time', 'room', 'is_active')
-    raw_id_fields = ('subject', 'teacher')
+    fields = ('subject', 'teacher', 'date', 'start_time', 'end_time', 'room', 'is_active')
     show_change_link = True
 
 
@@ -18,19 +17,23 @@ class SubjectAdmin(admin.ModelAdmin):
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ('group', 'subject', 'teacher', 'weekday', 'start_time', 'end_time', 'room', 'is_active')
-    list_filter = ('weekday', 'group', 'subject', 'teacher', 'is_active')
-    search_fields = ('group__name', 'subject__name', 'teacher__user__username', 'room')
-    raw_id_fields = ('group', 'subject', 'teacher')
+    list_display = ('group', 'subject', 'teacher', 'date', 'start_time', 'end_time', 'room', 'is_active')
+    list_filter = ('date', 'group', 'is_active')
+    search_fields = ('group__name', 'subject', 'teacher', 'room')
+    raw_id_fields = ('group',)
 
 
 @admin.register(Group)
 class GroupAdmin(admin.ModelAdmin):
-    list_display = ('name', 'teacher')
-    search_fields = ('name', 'teacher__user__username')
-    raw_id_fields = ('teacher',)
+    list_display = ('name', 'get_teachers')
+    search_fields = ('name', 'teachers__user__username')
+    filter_horizontal = ('teachers',)
     inlines = [LessonInline]
     ordering = ['name']
+
+    def get_teachers(self, obj):
+        return ", ".join([teacher.user.username for teacher in obj.teachers.all()])
+    get_teachers.short_description = 'Teachers'
 
 
 @admin.register(ShopItem)
@@ -58,4 +61,12 @@ class TeacherInviteCodeAdmin(admin.ModelAdmin):
     list_display = ('code', 'is_active', 'max_uses', 'used_count', 'expires_at', 'created_at')
     list_filter = ('is_active', 'created_at')
     search_fields = ('code',)
+    readonly_fields = ('created_at',)
+
+
+@admin.register(GroupInviteCode)
+class GroupInviteCodeAdmin(admin.ModelAdmin):
+    list_display = ('code', 'group', 'teacher', 'is_active', 'max_uses', 'used_count', 'expires_at', 'created_at')
+    list_filter = ('is_active', 'created_at', 'group')
+    search_fields = ('code', 'group__name', 'teacher__user__username')
     readonly_fields = ('created_at',)

@@ -21,7 +21,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
 
 
 class GroupSerializer(serializers.ModelSerializer):
-    teacher = serializers.PrimaryKeyRelatedField(read_only=True)
+    teachers = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = Group
@@ -33,6 +33,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True)
     role = serializers.ChoiceField(choices=["student", "teacher"], write_only=True)
     teacher_code = serializers.CharField(required=False, allow_blank=True)
+    group_code = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
@@ -45,6 +46,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             "password2",
             "role",
             "teacher_code",
+            "group_code",
         )
 
     def validate(self, attrs):
@@ -60,18 +62,35 @@ class RegisterSerializer(serializers.ModelSerializer):
             if not invite or not invite.is_valid():
                 raise serializers.ValidationError("Некорректный код преподавателя")
 
+        if attrs["role"] == "student":
+            group_code = attrs.get("group_code")
+            if not group_code:
+                raise serializers.ValidationError("Требуется код группы")
+
+            from api.models import GroupInviteCode
+            invite = GroupInviteCode.objects.filter(code=group_code).first()
+            if not invite or not invite.is_valid():
+                raise serializers.ValidationError("Некорректный код группы")
+
         return attrs
 
     def create(self, validated_data):
         validated_data.pop("password2")
         role = validated_data.pop("role")
         teacher_code = validated_data.pop("teacher_code", None)
+        group_code = validated_data.pop("group_code", None)
 
         with transaction.atomic():
             user = User.objects.create_user(**validated_data)
 
             if role == "student":
-                StudentProfile.objects.create(user=user)
+                student_profile = StudentProfile.objects.create(user=user)
+
+                if group_code:
+                    from api.models import GroupInviteCode
+                    invite = GroupInviteCode.objects.filter(code=group_code).first()
+                    if invite and invite.is_valid():
+                        invite.use(student_profile)
 
             elif role == "teacher":
                 TeacherProfile.objects.create(user=user)
@@ -155,9 +174,7 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
 
 
 class LessonSerializer(serializers.ModelSerializer):
-    teacher = serializers.PrimaryKeyRelatedField(read_only=True)
     group = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all())
-    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all())
 
     class Meta:
         model = Lesson
@@ -169,7 +186,7 @@ class LessonCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lesson
-        fields = ("id", "group", "subject", "weekday", "start_time", "end_time", "room", "is_active")
+        fields = ("id", "group", "subject", "teacher", "date", "start_time", "end_time", "room", "is_active")
         read_only_fields = ("id",)
 
 

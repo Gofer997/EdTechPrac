@@ -79,7 +79,7 @@ class AdminGroupLessonsView(APIView):
                 return Response({"detail": "Ожидается объект урока"}, status=status.HTTP_400_BAD_REQUEST)
 
             validated["group"] = group
-            validated["teacher"] = validated.get("teacher") or group.teacher
+            validated["teacher"] = validated.get("teacher") or (group.teachers.first() if group.teachers.exists() else None)
 
             lesson = Lesson(**validated)
 
