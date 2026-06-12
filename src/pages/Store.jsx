@@ -1,6 +1,20 @@
 import { useState, useEffect } from 'react';
 import api from "../api.js";
-
+import Header from "../components/header.jsx";
+import Footer from "../components/footer.jsx";
+import Aside from "../components/aside.jsx";  
+import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import 'bootstrap/dist/css/bootstrap.min.css'
+import {
+  Container,
+  Row,
+  Col,
+  Alert,
+  Spinner,
+  Card,
+  Badge,
+  Button,
+} from 'react-bootstrap'
 
 const Store = () => {
   const [items, setItems] = useState([]);
@@ -69,6 +83,8 @@ const Store = () => {
 
   return (
     <div>
+      <Header />
+      <Aside />
       <h1>Магазин (Тест)</h1>
 
       {message && <div style={{ color: 'green' }}>{message}</div>}
@@ -106,6 +122,7 @@ const Store = () => {
           </li>
         ))}
       </ul>
+      <Footer />
     </div>
   );
 };

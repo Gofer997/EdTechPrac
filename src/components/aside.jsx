@@ -148,6 +148,15 @@ const Aside = () => {
 
                 <Button
                   variant="link"
+                  href="/schedule"
+                  className="w-100 text-start mb-1"
+                  style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
+                >
+                  Расписание
+                </Button>
+
+                <Button
+                  variant="link"
                   href="/homeworks"
                   className="w-100 text-start mb-1"
                   style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
@@ -188,7 +197,16 @@ const Aside = () => {
                     Преподаватель
                   </small>
                 </div>
-                
+
+                <Button
+                  variant="link"
+                  href="/schedule"
+                  className="w-100 text-start mb-1"
+                  style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
+                >
+                  Расписание
+                </Button>
+
                 <Button
                   variant="link"
                   href="/groups"
@@ -197,7 +215,7 @@ const Aside = () => {
                 >
                   Группы
                 </Button>
-                
+
                 <Button
                   variant="link"
                   href="/assignments"

@@ -1,16 +1,91 @@
-# React + Vite
+# EdTech Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Образовательная платформа с ролями студентов и преподавателей.
 
-Currently, two official plugins are available:
+## Функционал
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Авторизация
+- Регистрация с инвайт-кодами для преподавателей
+- Вход в систему с JWT токенами
+- Автоматическое обновление токенов
 
-## React Compiler
+### Профили пользователей
+- Профили студентов и преподавателей
+- Загрузка аватарок с автоматическим сжатием в AVIF
+- Отображение статистики (XP, уровень, кристаллы)
+- Ролевая система доступа
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Система заданий
+- Создание заданий преподавателями
+- Лента заданий для студентов
+- Отслеживание статусов (выдано, отправлено, на проверке, оценено, просрочено)
+- Управление группами
 
-## Expanding the ESLint configuration
+### Магазин
+- Каталог товаров
+- Покупка за кристаллы
+- Активация покупок
+- История покупок
+- Управление покупками преподавателями
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Навигация
+- Адаптивный хедер с профилем и статистикой
+- Боковая панель с контекстным меню в зависимости от роли
+- Ролевые разделы меню
+
+## Технологии
+
+### Frontend
+- React
+- React Router
+- Bootstrap 5
+- Axios
+
+### Backend
+- Django
+- Django REST Framework
+- JWT Authentication
+- SQLite
+
+## Структура проекта
+
+```
+EdTechFront/
+├── src/
+│   ├── components/
+│   │   ├── header.jsx      # Хедер с профилем и статистикой
+│   │   ├── aside.jsx       # Боковая панель с навигацией
+│   │   └── footer.jsx      # Футер
+│   ├── pages/
+│   │   ├── Login.jsx       # Страница входа
+│   │   ├── Register.jsx    # Страница регистрации
+│   │   ├── Profile.jsx     # Профиль пользователя
+│   │   ├── Home.jsx        # Главная страница
+│   │   ├── Store.jsx       # Магазин
+│   │   └── homeworks.jsx   # Задания студентов
+│   └── api.js              # API клиент с авторизацией
+
+back/backend/
+├── api/
+│   ├── models.py           # Модели данных
+│   ├── serializers.py      # Сериализаторы
+│   ├── views.py            # API представления
+│   ├── urls.py             # URL маршруты
+│   ├── permissions.py      # Права доступа
+│   └── admin.py            # Админ-панель
+└── migrations/            # Миграции БД
+```
+
+## Основные возможности
+
+### Для студентов
+- Просмотр и выполнение заданий
+- Покупка товаров в магазине
+- Отслеживание прогресса (XP, уровень)
+- Управление профилем
+
+### Для преподавателей
+- Создание и управление заданиями
+- Управление группами студентов
+- Генерация инвайт-кодов
+- Просмотр покупок студентов

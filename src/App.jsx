@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Homeworks from "./pages/homeworks";
 import Store from "./pages/Store";
+import Schedule from "./pages/Schedule";
 import "./App.css";
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
       <Route path="/profile" element={<Profile />} />
       <Route path="/homeworks" element={<Homeworks />} />
       <Route path="/shop" element={<Store />}/>
+      <Route path="/schedule" element={<Schedule />} />
     </Routes>
   )
 }

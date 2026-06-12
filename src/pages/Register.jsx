@@ -19,6 +19,7 @@ function Register() {
     password2: "",
     role: "",
     teacher_code: "",
+    group_code: "",
   });
   const [error, setError] = useState("");
 
@@ -132,6 +133,13 @@ function Register() {
                     <Form.Group className="mt-3">
                       <Form.Label>Teacher code</Form.Label>
                       <Form.Control size="lg" type="text" name="teacher_code" value={form.teacher_code} onChange={handleChange} required placeholder="Введите код от админа" />
+                    </Form.Group>
+                  )}
+
+                  {form.role === "student" && (
+                    <Form.Group className="mt-3">
+                      <Form.Label>Group code</Form.Label>
+                      <Form.Control size="lg" type="text" name="group_code" value={form.group_code} onChange={handleChange} required placeholder="Введите код группы" />
                     </Form.Group>
                   )}
 
