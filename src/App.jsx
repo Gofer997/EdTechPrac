@@ -6,6 +6,7 @@ import Profile from "./pages/Profile";
 import Homeworks from "./pages/homeworks";
 import Store from "./pages/Store";
 import Schedule from "./pages/Schedule";
+import TeacherStudents from "./pages/TeacherStudents";
 import "./App.css";
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
       <Route path="/homeworks" element={<Homeworks />} />
       <Route path="/shop" element={<Store />}/>
       <Route path="/schedule" element={<Schedule />} />
+      <Route path="/teacher/students" element={<TeacherStudents />} />
     </Routes>
   )
 }

@@ -117,7 +117,7 @@ const Aside = () => {
               className="w-100 text-start mb-1"
               style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
             >
-              🏠 Главная
+              Главная
             </Button>
             
             <Button
@@ -126,7 +126,7 @@ const Aside = () => {
               className="w-100 text-start mb-1"
               style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
             >
-              📚 Курсы
+              Курсы
             </Button>
             
             <Button
@@ -135,7 +135,7 @@ const Aside = () => {
               className="w-100 text-start mb-1"
               style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
             >
-              👤 Профиль
+              Профиль
             </Button>
 
             {role === "student" && (
@@ -209,6 +209,15 @@ const Aside = () => {
 
                 <Button
                   variant="link"
+                  href="/teacher/students"
+                  className="w-100 text-start mb-1"
+                  style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
+                >
+                  Ученики
+                </Button>
+
+                <Button
+                  variant="link"
                   href="/groups"
                   className="w-100 text-start mb-1"
                   style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
@@ -239,7 +248,7 @@ const Aside = () => {
               className="w-100 text-start mb-1"
               style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
             >
-              ℹ️ О проекте
+              О проекте
             </Button>
 
             {localStorage.getItem("access") && (
@@ -251,7 +260,7 @@ const Aside = () => {
                   className="w-100 text-start"
                   style={{ color: "#dc3545", textDecoration: "none", padding: "8px 12px" }}
                 >
-                  🚪 Выйти
+                  Выйти
                 </Button>
               </>
             )}
