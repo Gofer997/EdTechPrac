@@ -47,10 +47,14 @@ __all__ = [
     "GroupViewSet",
     "AssignmentViewSet",
     "StudentAssignmentFeedView",
+    "TeacherAssignmentFeedView",
     "GroupInviteCodeView",
     "StudentJoinGroupView",
     "LessonViewSet",
     "ScheduleView",
+    "TeacherStudentsView",
+    "StudentAssignmentsView",
+    "GradeAssignmentView",
 ]
 
 class ShopItemListView(generics.ListAPIView):
@@ -540,6 +544,115 @@ class ScheduleView(APIView):
         })
 
 
+class TeacherStudentsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        teacher = TeacherProfile.objects.filter(user=request.user).first()
+        if not teacher:
+            return Response({"detail": "Только преподаватели могут просматривать учеников"}, status=403)
+
+        groups = teacher.groups.all()
+        students = StudentProfile.objects.filter(group__in=groups).select_related('user', 'group')
+
+        students_data = []
+        for student in students:
+            students_data.append({
+                "id": student.id,
+                "username": student.user.username,
+                "first_name": student.user.first_name,
+                "last_name": student.user.last_name,
+                "group": student.group.name if student.group else None,
+                "xp": student.xp,
+                "level": student.level,
+                "crystals": student.crystals,
+            })
+
+        return Response({"students": students_data})
+
+
+class StudentAssignmentsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id):
+        teacher = TeacherProfile.objects.filter(user=request.user).first()
+        if not teacher:
+            return Response({"detail": "Только преподаватели могут просматривать задания учеников"}, status=403)
+
+        student = StudentProfile.objects.filter(id=student_id).first()
+        if not student:
+            return Response({"detail": "Ученик не найден"}, status=404)
+
+        if not student.group or not teacher.groups.filter(pk=student.group.pk).exists():
+            return Response({"detail": "Ученик не в вашей группе"}, status=403)
+
+        assignments = Assignment.objects.filter(group=student.group).exclude(
+            status=Assignment.Status.REVOKED
+        )
+
+        assignments_data = []
+        for assignment in assignments:
+            assignments_data.append({
+                "id": assignment.id,
+                "title": assignment.title,
+                "description": assignment.description,
+                "due_date": assignment.due_date,
+                "status": assignment.status,
+                "answer": assignment.answer,
+                "grade": assignment.grade,
+                "feedback": assignment.feedback,
+                "created_at": assignment.created_at,
+            })
+
+        return Response({"student_id": student.id, "student_name": f"{student.user.first_name} {student.user.last_name}", "assignments": assignments_data})
+
+
+class GradeAssignmentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, student_id, assignment_id):
+        teacher = TeacherProfile.objects.filter(user=request.user).first()
+        if not teacher:
+            return Response({"detail": "Только преподаватели могут оценивать задания"}, status=403)
+
+        student = StudentProfile.objects.filter(id=student_id).first()
+        if not student:
+            return Response({"detail": "Ученик не найден"}, status=404)
+
+        if not student.group or not teacher.groups.filter(pk=student.group.pk).exists():
+            return Response({"detail": "Ученик не в вашей группе"}, status=403)
+
+        assignment = Assignment.objects.filter(id=assignment_id, group=student.group).first()
+        if not assignment:
+            return Response({"detail": "Задание не найдено"}, status=404)
+
+        grade = request.data.get("grade")
+        feedback = request.data.get("feedback")
+
+        if grade is not None:
+            try:
+                grade = int(grade)
+                if grade < 1 or grade > 12:
+                    return Response({"detail": "Оценка должна быть от 1 до 12"}, status=400)
+            except (ValueError, TypeError):
+                return Response({"detail": "Оценка должна быть числом"}, status=400)
+
+        assignment.grade = grade
+        assignment.feedback = feedback
+        
+        if grade is not None and assignment.status != Assignment.Status.GRADED:
+            assignment.status = Assignment.Status.GRADED
+        
+        assignment.save()
+
+        return Response({
+            "id": assignment.id,
+            "grade": assignment.grade,
+            "feedback": assignment.feedback,
+            "status": assignment.status
+        })
+
+
 class LessonViewSet(viewsets.ModelViewSet):
     serializer_class = LessonSerializer
     permission_classes = [IsAuthenticated]
@@ -606,6 +719,39 @@ class StudentAssignmentFeedView(generics.ListAPIView):
         return Assignment.objects.filter(group=student.group).exclude(
             status=Assignment.Status.REVOKED
         )
+
+
+class TeacherAssignmentFeedView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        teacher = TeacherProfile.objects.filter(user=request.user).first()
+        if not teacher:
+            return Response({"detail": "Только преподаватели могут просматривать задания для оценки"}, status=403)
+
+        groups = teacher.groups.all()
+        assignments = Assignment.objects.filter(group__in=groups).exclude(
+            status=Assignment.Status.REVOKED
+        ).select_related('group', 'teacher')
+
+        assignments_data = []
+        for assignment in assignments:
+            assignments_data.append({
+                "id": assignment.id,
+                "title": assignment.title,
+                "description": assignment.description,
+                "due_date": assignment.due_date,
+                "status": assignment.status,
+                "effective_status": assignment.effective_status,
+                "answer": assignment.answer,
+                "grade": assignment.grade,
+                "feedback": assignment.feedback,
+                "group": assignment.group.name,
+                "teacher": assignment.teacher.user.username if assignment.teacher else None,
+                "created_at": assignment.created_at,
+            })
+
+        return Response(assignments_data)
 
 
 class GroupInviteCodeView(APIView):

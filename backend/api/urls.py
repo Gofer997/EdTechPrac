@@ -6,6 +6,7 @@ from api.views import (
     GroupViewSet,
     AssignmentViewSet,
     StudentAssignmentFeedView,
+    TeacherAssignmentFeedView,
     ChangeCrystalsView,
     MyStudentProfileView,
     MyStudentAvatarView,
@@ -22,6 +23,9 @@ from api.views import (
     StudentJoinGroupView,
     LessonViewSet,
     ScheduleView,
+    TeacherStudentsView,
+    StudentAssignmentsView,
+    GradeAssignmentView,
 )
 from . import views
 from api.views_admin import AdminDashboardView, AdminInviteCodeView, AdminGroupLessonsView, AdminGroupLessonDetailView
@@ -36,6 +40,7 @@ urlpatterns = [
     path("login/", LoginView.as_view()),
     path("refresh/", TokenRefreshView.as_view()),
     path("assignments/feed/", StudentAssignmentFeedView.as_view()),
+    path("assignments/teacher/feed/", TeacherAssignmentFeedView.as_view()),
     path("student/profile/", MyStudentProfileView.as_view()),
     path("student/avatar/", MyStudentAvatarView.as_view()),
     path("teacher/profile/", MyTeacherProfileView.as_view()),
@@ -59,6 +64,9 @@ urlpatterns = [
     path("lessons/", LessonViewSet.as_view({"get": "list", "post": "create"}), name="lesson-list"),
     path("lessons/<int:pk>/", LessonViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}), name="lesson-detail"),
     path("schedule/", ScheduleView.as_view(), name="schedule"),
+    path("teacher/students/", TeacherStudentsView.as_view(), name="teacher-students"),
+    path("teacher/students/<int:student_id>/assignments/", StudentAssignmentsView.as_view(), name="student-assignments"),
+    path("teacher/students/<int:student_id>/assignments/<int:assignment_id>/grade/", GradeAssignmentView.as_view(), name="grade-assignment"),
     path('test-error/', views.trigger_error_view, name='test-error'),
 
 ]
