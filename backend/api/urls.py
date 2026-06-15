@@ -26,6 +26,7 @@ from api.views import (
     TeacherStudentsView,
     StudentAssignmentsView,
     GradeAssignmentView,
+    LessonAttendanceView,
 )
 from . import views
 from api.views_admin import AdminDashboardView, AdminInviteCodeView, AdminGroupLessonsView, AdminGroupLessonDetailView
@@ -63,10 +64,12 @@ urlpatterns = [
     path("teachers/student/<int:student_id>/purchases/", TeacherStudentPurchasesView.as_view(), name="teacher-student-purchases"),
     path("lessons/", LessonViewSet.as_view({"get": "list", "post": "create"}), name="lesson-list"),
     path("lessons/<int:pk>/", LessonViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}), name="lesson-detail"),
+    path("lessons/<int:lesson_id>/attendance/", LessonAttendanceView.as_view(), name="lesson-attendance"),  
     path("schedule/", ScheduleView.as_view(), name="schedule"),
     path("teacher/students/", TeacherStudentsView.as_view(), name="teacher-students"),
     path("teacher/students/<int:student_id>/assignments/", StudentAssignmentsView.as_view(), name="student-assignments"),
     path("teacher/students/<int:student_id>/assignments/<int:assignment_id>/grade/", GradeAssignmentView.as_view(), name="grade-assignment"),
     path('test-error/', views.trigger_error_view, name='test-error'),
+    
 
 ]

@@ -370,3 +370,19 @@ class Purchase(models.Model):
     def __str__(self):
         item_name = self.item.name if self.item else "Удалённый товар"
         return f"Покупка {self.code} ({item_name}) - {self.student.user.username}"
+
+
+class Attendance(models.Model):
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='attendances')
+    is_present = models.BooleanField(default=False)
+    crystals_granted = models.BooleanField(default=False)  # защита от повторного начисления
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('lesson', 'student')
+        ordering = ['student__user__last_name', 'student__user__first_name']
+
+    def __str__(self):
+        return f"{self.student} @ {self.lesson}"

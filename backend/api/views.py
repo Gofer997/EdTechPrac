@@ -6,7 +6,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django.utils import timezone
-from django.db import transaction
+from django.db import transaction, IntegrityError
+from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 
 from typing import Any
@@ -23,6 +24,7 @@ from api.models import (
     Purchase,
     Subject,
     Lesson,
+    Attendance,
 )
 from api.serializers import (
     RegisterSerializer,
@@ -35,6 +37,7 @@ from api.serializers import (
     AssignmentSerializer,
     LessonSerializer,
     LessonCreateSerializer,
+    AttendanceSerializer,
 )
 
 from api.permissions import ( 
@@ -842,3 +845,91 @@ class GenerateTeacherInviteCodeView(APIView):
 def trigger_error_view(request):
     bad_calc = 1 / 0 
     return JsonResponse({"message": "something"})
+
+
+
+class LessonAttendanceView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def get_lesson_and_check_access(self, lesson_id):
+        lesson = get_object_or_404(Lesson, pk=lesson_id)
+        teacher = TeacherProfile.objects.filter(user=self.request.user).first()
+        if not teacher:
+            raise PermissionDenied("Только преподаватели могут работать с посещаемостью")
+        if not teacher.groups.filter(pk=lesson.group_id).exists():
+            raise PermissionDenied("Вы не ведёте группу этого урока")
+        return lesson
+
+    def get(self, request, lesson_id):
+        """
+        Возвращает список студентов группы урока с отметкой о присутствии.
+        Для студентов, у которых ещё нет записи Attendance, создаётся со значением is_present=False.
+        """
+        lesson = self.get_lesson_and_check_access(lesson_id)
+        students = StudentProfile.objects.filter(group=lesson.group)
+
+        # Создаём пропущенные записи Attendance (атомарно, с игнорированием дубликатов)
+        with transaction.atomic():
+            for student in students:
+                Attendance.objects.get_or_create(
+                    lesson=lesson,
+                    student=student,
+                    defaults={'is_present': False}
+                )
+
+        attendances = Attendance.objects.filter(lesson=lesson).select_related('student__user')
+        serializer = AttendanceSerializer(attendances, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, lesson_id):
+        """
+        Принимает список объектов: [{"student_id": 1, "is_present": true}, ...]
+        Обновляет посещаемость и начисляет по 1 кристаллу каждому вновь отмеченному студенту.
+        """
+        lesson = self.get_lesson_and_check_access(lesson_id)
+        attendance_data = request.data
+
+        if not isinstance(attendance_data, list):
+            return Response({"detail": "Ожидается список объектов посещаемости"}, status=status.HTTP_400_BAD_REQUEST)
+
+        updated = []
+        errors = []
+
+        with transaction.atomic():
+            for item in attendance_data:
+                student_id = item.get('student_id')
+                is_present = item.get('is_present', False)
+
+                if student_id is None:
+                    errors.append({"item": item, "error": "student_id обязателен"})
+                    continue
+
+                try:
+                    student = StudentProfile.objects.select_for_update().get(pk=student_id, group=lesson.group)
+                except StudentProfile.DoesNotExist:
+                    errors.append({"student_id": student_id, "error": "Студент не найден или не в этой группе"})
+                    continue
+
+                attendance, created = Attendance.objects.get_or_create(
+                    lesson=lesson,
+                    student=student,
+                    defaults={'is_present': is_present}
+                )
+
+                if not created:
+                    attendance.is_present = is_present
+                    attendance.save(update_fields=['is_present'])
+
+                # Начисляем кристалл, если отметили присутствие и кристаллы ещё не выданы
+                if is_present and not attendance.crystals_granted:
+                    student.crystals += 1
+                    student.save(update_fields=['crystals'])
+                    attendance.crystals_granted = True
+                    attendance.save(update_fields=['crystals_granted'])
+
+                updated.append(AttendanceSerializer(attendance).data)
+
+        return Response({
+            "updated": updated,
+            "errors": errors
+        }, status=status.HTTP_200_OK if not errors else status.HTTP_207_MULTI_STATUS)
