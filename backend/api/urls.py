@@ -27,6 +27,7 @@ from api.views import (
     StudentAssignmentsView,
     GradeAssignmentView,
     LessonAttendanceView,
+    CurrentLessonView,
 )
 from . import views
 from api.views_admin import AdminDashboardView, AdminInviteCodeView, AdminGroupLessonsView, AdminGroupLessonDetailView
@@ -64,7 +65,8 @@ urlpatterns = [
     path("teachers/student/<int:student_id>/purchases/", TeacherStudentPurchasesView.as_view(), name="teacher-student-purchases"),
     path("lessons/", LessonViewSet.as_view({"get": "list", "post": "create"}), name="lesson-list"),
     path("lessons/<int:pk>/", LessonViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}), name="lesson-detail"),
-    path("lessons/<int:lesson_id>/attendance/", LessonAttendanceView.as_view(), name="lesson-attendance"),  
+    path("lessons/<int:lesson_id>/attendance/", LessonAttendanceView.as_view(), name="lesson-attendance"),
+    path("lessons/current/", CurrentLessonView.as_view(), name="current-lesson"),
     path("schedule/", ScheduleView.as_view(), name="schedule"),
     path("teacher/students/", TeacherStudentsView.as_view(), name="teacher-students"),
     path("teacher/students/<int:student_id>/assignments/", StudentAssignmentsView.as_view(), name="student-assignments"),

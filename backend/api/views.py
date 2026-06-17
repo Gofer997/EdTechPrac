@@ -58,6 +58,7 @@ __all__ = [
     "TeacherStudentsView",
     "StudentAssignmentsView",
     "GradeAssignmentView",
+    "CurrentLessonView",
 ]
 
 class ShopItemListView(generics.ListAPIView):
@@ -540,10 +541,26 @@ class ScheduleView(APIView):
             lessons = Lesson.objects.filter(group=student.group, date__range=[week_start, week_end])
 
         serializer = LessonSerializer(lessons, many=True)
+        lessons_data = serializer.data
+
+        # For students, add attendance grades
+        if student:
+            lesson_ids = [lesson['id'] for lesson in lessons_data]
+            attendances = Attendance.objects.filter(
+                lesson_id__in=lesson_ids,
+                student=student
+            ).select_related('lesson')
+
+            attendance_map = {att.lesson_id: att for att in attendances}
+
+            for lesson in lessons_data:
+                attendance = attendance_map.get(lesson['id'])
+                lesson['attendance_grade'] = attendance.grade if attendance else None
+
         return Response({
             "week_start": week_start.strftime("%Y-%m-%d"),
             "week_end": week_end.strftime("%Y-%m-%d"),
-            "lessons": serializer.data
+            "lessons": lessons_data
         })
 
 
@@ -653,6 +670,47 @@ class GradeAssignmentView(APIView):
             "grade": assignment.grade,
             "feedback": assignment.feedback,
             "status": assignment.status
+        })
+
+
+class CurrentLessonView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        teacher = TeacherProfile.objects.filter(user=request.user).first()
+        if not teacher:
+            return Response({"detail": "Только преподаватели могут просматривать текущий урок"}, status=403)
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        current_date = now.date()
+
+        # Всегда возвращаем список уроков на сегодня (без фильтрации по времени сервера)
+        today_lessons = Lesson.objects.filter(
+            teacher=teacher,
+            date=current_date
+        ).order_by('start_time')
+
+        lessons_data = []
+        for lesson in today_lessons:
+            lessons_data.append({
+                "id": lesson.id,
+                "subject": lesson.subject,
+                "start_time": lesson.start_time.strftime("%H:%M"),
+                "end_time": lesson.end_time.strftime("%H:%M"),
+                "room": lesson.room,
+                "group": {
+                    "id": lesson.group.id,
+                    "name": lesson.group.name
+                },
+                "date": lesson.date.strftime("%Y-%m-%d")
+            })
+
+        return Response({
+            "current_lesson": None,
+            "today_lessons": lessons_data,
+            "message": "Выберите урок из списка на сегодня."
         })
 
 
@@ -883,8 +941,8 @@ class LessonAttendanceView(APIView):
 
     def post(self, request, lesson_id):
         """
-        Принимает список объектов: [{"student_id": 1, "is_present": true}, ...]
-        Обновляет посещаемость и начисляет по 1 кристаллу каждому вновь отмеченному студенту.
+        Принимает список объектов: [{"student_id": 1, "is_present": true, "grade": 5, "crystals_awarded": 2}, ...]
+        Обновляет посещаемость, оценки и кристаллы.
         """
         lesson = self.get_lesson_and_check_access(lesson_id)
         attendance_data = request.data
@@ -899,10 +957,34 @@ class LessonAttendanceView(APIView):
             for item in attendance_data:
                 student_id = item.get('student_id')
                 is_present = item.get('is_present', False)
+                grade = item.get('grade')
+                crystals_awarded = item.get('crystals_awarded', 0)
 
                 if student_id is None:
                     errors.append({"item": item, "error": "student_id обязателен"})
                     continue
+
+                # Validate grade
+                if grade is not None:
+                    try:
+                        grade = int(grade)
+                        if grade < 1 or grade > 12:
+                            errors.append({"student_id": student_id, "error": "Оценка должна быть от 1 до 12"})
+                            continue
+                    except (ValueError, TypeError):
+                        errors.append({"student_id": student_id, "error": "Оценка должна быть числом"})
+                        continue
+
+                # Validate crystals_awarded
+                if crystals_awarded is not None:
+                    try:
+                        crystals_awarded = int(crystals_awarded)
+                        if crystals_awarded < 0 or crystals_awarded > 3:
+                            errors.append({"student_id": student_id, "error": "Кристаллы должны быть от 0 до 3"})
+                            continue
+                    except (ValueError, TypeError):
+                        errors.append({"student_id": student_id, "error": "Кристаллы должны быть числом"})
+                        continue
 
                 try:
                     student = StudentProfile.objects.select_for_update().get(pk=student_id, group=lesson.group)
@@ -918,7 +1000,13 @@ class LessonAttendanceView(APIView):
 
                 if not created:
                     attendance.is_present = is_present
-                    attendance.save(update_fields=['is_present'])
+                    attendance.grade = grade
+                    attendance.crystals_awarded = crystals_awarded
+                    attendance.save(update_fields=['is_present', 'grade', 'crystals_awarded'])
+                else:
+                    attendance.grade = grade
+                    attendance.crystals_awarded = crystals_awarded
+                    attendance.save(update_fields=['grade', 'crystals_awarded'])
 
                 # Начисляем кристалл, если отметили присутствие и кристаллы ещё не выданы
                 if is_present and not attendance.crystals_granted:
@@ -927,9 +1015,15 @@ class LessonAttendanceView(APIView):
                     attendance.crystals_granted = True
                     attendance.save(update_fields=['crystals_granted'])
 
+                # Начисляем дополнительные кристаллы (если указано)
+                if crystals_awarded > 0:
+                    student.crystals += crystals_awarded
+                    student.save(update_fields=['crystals'])
+
                 updated.append(AttendanceSerializer(attendance).data)
 
+        response_status = status.HTTP_200_OK if not errors else status.HTTP_207_MULTI_STATUS
         return Response({
             "updated": updated,
             "errors": errors
-        }, status=status.HTTP_200_OK if not errors else status.HTTP_207_MULTI_STATUS)
+        }, status=response_status)

@@ -219,7 +219,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Attendance
-        fields = ['id', 'student_id', 'student_name', 'is_present', 'crystals_granted']
+        fields = ['id', 'student_id', 'student_name', 'is_present', 'crystals_granted', 'grade', 'crystals_awarded']
         read_only_fields = ['id', 'crystals_granted']
 
     def get_student_name(self, obj):

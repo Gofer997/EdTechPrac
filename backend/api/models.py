@@ -221,6 +221,23 @@ class TeacherInviteCode(models.Model):
         self.save()
 
 
+class Attendance(models.Model):
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name="attendance")
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="attendance", null=True, blank=True)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="attendance")
+    is_present = models.BooleanField(default=False)
+    grade = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(12)])
+    crystals_awarded = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(3)])
+    date = models.DateField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['student', 'lesson', 'date']
+
+    def __str__(self):
+        return f"{self.student.user.username} - {self.group.name} - {self.date}"
+
+
 class GroupInviteCode(models.Model):
     code = models.CharField(max_length=64, unique=True)
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="invite_codes")
@@ -377,6 +394,8 @@ class Attendance(models.Model):
     student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='attendances')
     is_present = models.BooleanField(default=False)
     crystals_granted = models.BooleanField(default=False)  # защита от повторного начисления
+    grade = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(12)])
+    crystals_awarded = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(3)])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
