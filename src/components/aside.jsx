@@ -118,16 +118,7 @@ const Aside = () => {
               style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
             >
               Главная
-            </Button>
-            
-            <Button
-              variant="link"
-              href="/courses"
-              className="w-100 text-start mb-1"
-              style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
-            >
-              Курсы
-            </Button>
+            </Button> 
             
             <Button
               variant="link"
@@ -209,29 +200,20 @@ const Aside = () => {
 
                 <Button
                   variant="link"
+                  href="/current-lesson"
+                  className="w-100 text-start mb-1"
+                  style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
+                >
+                  Текущий урок
+                </Button>
+
+                <Button
+                  variant="link"
                   href="/teacher/students"
                   className="w-100 text-start mb-1"
                   style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
                 >
                   Ученики
-                </Button>
-
-                <Button
-                  variant="link"
-                  href="/groups"
-                  className="w-100 text-start mb-1"
-                  style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
-                >
-                  Группы
-                </Button>
-
-                <Button
-                  variant="link"
-                  href="/assignments"
-                  className="w-100 text-start mb-1"
-                  style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
-                >
-                  Задания
                 </Button>
               </>
             )}

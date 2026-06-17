@@ -90,7 +90,6 @@ export default function Header() {
         <Navbar.Collapse id="main-navbar">
           <Nav className="me-auto my-2 my-lg-0">
             <Nav.Link href="/">Главная</Nav.Link>
-            <Nav.Link href="/courses">Курсы</Nav.Link>
             <Nav.Link href="/about">О проекте</Nav.Link>
           </Nav>
 

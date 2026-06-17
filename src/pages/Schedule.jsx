@@ -162,6 +162,11 @@ function Schedule() {
                             {lesson.start_time} - {lesson.end_time}
                           </div>
                           {lesson.room && <div className="small text-muted">Каб. {lesson.room}</div>}
+                          {lesson.attendance_grade && (
+                            <div className="small text-success fw-bold mt-1">
+                              Оценка: {lesson.attendance_grade}
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>
