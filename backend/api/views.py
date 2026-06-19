@@ -43,6 +43,7 @@ from api.serializers import (
 from api.permissions import ( 
     IsTeacher, IsStudent, IsAdmin 
 )
+from api.utils import update_daily_quests, check_and_award_badges, generate_daily_quests
 
 __all__ = [
     "RegisterView",
@@ -62,10 +63,15 @@ __all__ = [
 ]
 
 class ShopItemListView(generics.ListAPIView):
-    """Витрина товаров для учеников"""
-    queryset = ShopItem.objects.filter(is_active=True)
     serializer_class = ShopItemSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = ShopItem.objects.filter(is_active=True)
+        if hasattr(self.request.user, 'studentprofile'):
+            student = self.request.user.studentprofile
+            queryset = queryset.filter(required_level__lte=student.level)
+        return queryset
 
 
 class BuyItemView(APIView):
@@ -92,6 +98,11 @@ class BuyItemView(APIView):
 
             # Создаем запись о покупке (код сгенерируется в методе save)
             purchase = Purchase.objects.create(student=student, item=item)
+            xp_amount = item.price // 2
+            if xp_amount > 0:
+                student.add_xp(xp_amount, f"Покупка: {item.name}")
+        update_daily_quests(student, 'buy_item')
+        check_and_award_badges(student)
 
         return Response({
             "message": "Успешная покупка",
@@ -381,7 +392,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             new_status = request.data.get("status")
             answer_text = request.data.get("answer")
 
-            if new_status != Assignment.Status.SUBMITTED:
+            if new_status == Assignment.Status.SUBMITTED:
                 raise PermissionDenied("Можно отправлять только сделанное задание (status = submitted)")
 
             if not answer_text or not isinstance(answer_text, str) or len(answer_text.strip()) == 0:
@@ -395,6 +406,19 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 
             if "group" in request.data and request.data["group"] != assignment.group.id:
                 raise PermissionDenied("Вы не можете изменить группу этого задания")
+
+            try:
+                student = StudentProfile.objects.get(user=request.user)
+            except StudentProfile.DoesNotExist:
+                pass
+            else:
+                # Проверяем, что это первый раз сдаётся (можно через флаг was_submitted)
+                # Но Assignment не хранит историю. Просто дадим XP, если статус меняется с ISSUED на SUBMITTED.
+                if assignment.status == Assignment.Status.ISSUED:
+                    student.add_xp(15, f"Сдача задания: {assignment.title}")
+                    update_daily_quests(student, 'submit_assignment')
+                    check_and_award_badges(student)
+
 
         elif teacher:
 
@@ -659,9 +683,15 @@ class GradeAssignmentView(APIView):
 
         assignment.grade = grade
         assignment.feedback = feedback
+        subject_obj = assignment.group.lessons.first().subject
         
-        if grade is not None and assignment.status != Assignment.Status.GRADED:
-            assignment.status = Assignment.Status.GRADED
+        if grade is not None and assignment.subject:
+            from api.models import Grade
+            Grade.objects.create(
+                student=student,
+                subject=assignment.subject,
+                value=grade
+            )
         
         assignment.save()
 
@@ -1027,3 +1057,83 @@ class LessonAttendanceView(APIView):
             "updated": updated,
             "errors": errors
         }, status=response_status)
+
+
+
+class DailyQuestView(APIView):
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def get(self, request):
+        student = request.user.studentprofile
+        generate_daily_quests(student)  # создаст, если нет
+        today = timezone.now().date()
+        quests = StudentDailyQuest.objects.filter(student=student, date=today)
+        data = []
+        for sq in quests:
+            data.append({
+                'id': sq.id,
+                'quest_type': sq.quest.quest_type,
+                'target_value': sq.quest.target_value,
+                'progress': sq.progress,
+                'completed': sq.completed,
+                'xp_reward': sq.quest.xp_reward,
+                'crystal_reward': sq.quest.crystal_reward,
+            })
+        return Response(data)
+
+
+class BadgeListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        badges = Badge.objects.all()
+        data = []
+        student = None
+        if hasattr(request.user, 'studentprofile'):
+            student = request.user.studentprofile
+        for badge in badges:
+            obtained = StudentBadge.objects.filter(student=student, badge=badge).exists() if student else False
+            data.append({
+                'id': badge.id,
+                'name': badge.name,
+                'description': badge.description,
+                'obtained': obtained,
+                'xp_reward': badge.xp_reward,
+                'crystal_reward': badge.crystal_reward,
+            })
+        return Response(data)
+
+class MyBadgeView(APIView):
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def get(self, request):
+        student = request.user.studentprofile
+        obtained = StudentBadge.objects.filter(student=student).select_related('badge')
+        data = [{
+            'id': sb.id,
+            'badge_name': sb.badge.name,
+            'description': sb.badge.description,
+            'obtained_at': sb.created_at
+        } for sb in obtained]
+        return Response(data)
+
+
+
+class LevelRewardListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        rewards = LevelReward.objects.all()
+        student = None
+        if hasattr(request.user, 'studentprofile'):
+            student = request.user.studentprofile
+        data = []
+        for reward in rewards:
+            obtained = student and student.level >= reward.level if student else False
+            data.append({
+                'level': reward.level,
+                'crystals_bonus': reward.crystals_bonus,
+                'badge': reward.badge.name if reward.badge else None,
+                'obtained': obtained,
+            })
+        return Response(data)

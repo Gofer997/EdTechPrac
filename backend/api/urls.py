@@ -28,6 +28,10 @@ from api.views import (
     GradeAssignmentView,
     LessonAttendanceView,
     CurrentLessonView,
+    DailyQuestView,
+    BadgeListView,
+    MyBadgeView,
+    LevelRewardListView,
 )
 from . import views
 from api.views_admin import AdminDashboardView, AdminInviteCodeView, AdminGroupLessonsView, AdminGroupLessonDetailView
@@ -72,6 +76,10 @@ urlpatterns = [
     path("teacher/students/<int:student_id>/assignments/", StudentAssignmentsView.as_view(), name="student-assignments"),
     path("teacher/students/<int:student_id>/assignments/<int:assignment_id>/grade/", GradeAssignmentView.as_view(), name="grade-assignment"),
     path('test-error/', views.trigger_error_view, name='test-error'),
+    path("daily-quests/", DailyQuestView.as_view(), name="daily-quests"),
+    path("badges/", BadgeListView.as_view(), name="badge-list"),
+    path("my-badges/", MyBadgeView.as_view(), name="my-badges"),
+    path("level-rewards/", LevelRewardListView.as_view(), name="level-rewards"),
     
 
 ]
