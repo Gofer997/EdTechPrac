@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
@@ -57,7 +57,48 @@ class StudentProfile(models.Model):
     def __str__(self):
         return self.user.username
 
+
+    def add_xp(self, amount, reason):
+        """Централизованное начисление XP с проверкой повышения уровня."""
+        with transaction.atomic():
+            self.xp += amount
+            old_level = self.level
+            self.level = max(1, (self.xp // 100) + 1)
+            self.save(update_fields=['xp', 'level'])
+
+            XPEvent.objects.create(student=self, amount=amount, reason=reason)
+
+            if self.level > old_level:
+                self._on_level_up(old_level, self.level)
+
+    def _on_level_up(self, old_level, new_level):
+        """Обработка получения нового уровня: награды за каждый пройденный уровень."""
+        for level in range(old_level + 1, new_level + 1):
+            try:
+                reward = LevelReward.objects.get(level=level)
+                if reward.crystals_bonus:
+                    self.crystals += reward.crystals_bonus
+                    self.save(update_fields=['crystals'])
+                if reward.badge:
+                    StudentBadge.objects.get_or_create(student=self, badge=reward.badge)
+                XPEvent.objects.create(
+                    student=self,
+                    amount=0,
+                    reason=f"Достижение уровня {level}: {reward.description or ''}"
+                )
+            except LevelReward.DoesNotExist:
+                pass
     def save(self, *args, **kwargs):
+    # 1. Если XP изменилось, пересчитываем уровень до обработки аватара
+        if self.pk:
+            try:
+                old = StudentProfile.objects.get(pk=self.pk)
+                if old.xp != self.xp:
+                    self.level = max(1, (self.xp // 100) + 1)
+            except StudentProfile.DoesNotExist:
+                pass
+
+    # 2. Старая логика обработки аватара (без изменений)
         old_avatar_name = None
         if self.pk:
             try:
@@ -71,26 +112,21 @@ class StudentProfile(models.Model):
                 self.avatar.open()
                 img = Image.open(self.avatar)
                 img = img.convert("RGB")
-
                 size = (256, 256)
                 img = ImageOps.fit(img, size, Image.Resampling.LANCZOS)
-
                 buf = BytesIO()
                 img.save(buf, format="AVIF", quality=85, optimize=True)
                 buf.seek(0)
-
                 filename = f"{self.user.pk}_{int(timezone.now().timestamp())}.avif"
-
                 self.avatar.save(filename, ContentFile(buf.read()), save=False)
             except Exception:
                 pass
 
         super().save(*args, **kwargs)
 
+    # 3. Удаление старого аватара (если он изменился)
         try:
-            if old_avatar_name and old_avatar_name != (
-                self.avatar.name if self.avatar else None
-            ):
+            if old_avatar_name and old_avatar_name != (self.avatar.name if self.avatar else None):
                 storage = self.avatar.storage
                 if storage.exists(old_avatar_name):
                     storage.delete(old_avatar_name)
@@ -145,6 +181,12 @@ class TeacherProfile(models.Model):
     def __str__(self):
         return self.user.username
 
+class Subject(models.Model):
+    name = models.CharField(max_length=128, unique=True)
+
+    def __str__(self):
+        return self.name
+
 
 class Assignment(models.Model):
 
@@ -170,7 +212,7 @@ class Assignment(models.Model):
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.ISSUED)
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateTimeField(null=True, blank=True)
-
+    subject = models.ForeignKey(Subject, null=True, blank=True, on_delete=models.SET_NULL, related_name='assignments')
     def save(self, *args, **kwargs):
         if not self.due_date:
             self.due_date = timezone.now() + timedelta(days=7)
@@ -230,9 +272,11 @@ class Attendance(models.Model):
     crystals_awarded = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(3)])
     date = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    xp_granted = models.BooleanField(default=False)  
 
     class Meta:
         unique_together = ['student', 'lesson', 'date']
+        ordering = ['student__user__last_name', 'student__user__first_name']
 
     def __str__(self):
         return f"{self.student.user.username} - {self.group.name} - {self.date}"
@@ -285,11 +329,7 @@ class GroupInviteCode(models.Model):
         student.save()
 
 
-class Subject(models.Model):
-    name = models.CharField(max_length=128, unique=True)
 
-    def __str__(self):
-        return self.name
 
 
 class Grade(models.Model):
@@ -302,6 +342,20 @@ class Grade(models.Model):
 class Badge(models.Model):
     name = models.CharField(max_length=128)
     description = models.TextField()
+    # Добавляем условия для автоматической выдачи
+    CONDITION_TYPES = [
+        ('lessons_attended', 'Посещено уроков'),
+        ('assignments_submitted', 'Сдано заданий'),
+        ('total_xp', 'Накоплено XP'),
+        ('items_bought', 'Куплено товаров'),
+    ]
+    condition_type = models.CharField(max_length=32, choices=CONDITION_TYPES, null=True, blank=True)
+    condition_value = models.PositiveIntegerField(null=True, blank=True)
+    xp_reward = models.PositiveIntegerField(default=0)
+    crystal_reward = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return self.name
 
 
 class StudentBadge(models.Model):
@@ -323,6 +377,7 @@ class ShopItem(models.Model):
         ('other', 'Другое'),
         ('product', 'товар'),
     )
+    required_level = models.PositiveIntegerField(default=1, verbose_name="Требуемый уровень")
 
     name = models.CharField(max_length=128, verbose_name="Название")
     description = models.TextField(blank=True, verbose_name="Описание")
@@ -438,3 +493,48 @@ class MonthlyAverageGrade(models.Model):
 
     def __str__(self):
         return f"{self.student.user.username} - {self.month}/{self.year}: {self.average_grade}"
+
+
+class LevelReward(models.Model):
+    level = models.PositiveIntegerField(unique=True)
+    crystals_bonus = models.PositiveIntegerField(default=0)
+    badge = models.ForeignKey('Badge', null=True, blank=True, on_delete=models.SET_NULL)
+    description = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f"Level {self.level} reward"
+
+
+
+class DailyQuest(models.Model):
+    QUEST_TYPES = [
+        ('login', 'Вход в систему'),
+        ('attend_lesson', 'Посетить урок'),
+        ('submit_assignment', 'Сдать задание'),
+        ('buy_item', 'Купить товар'),
+        ('earn_xp', 'Заработать N XP'),
+    ]
+    quest_type = models.CharField(max_length=32, choices=QUEST_TYPES)
+    target_value = models.PositiveIntegerField(default=1)
+    xp_reward = models.PositiveIntegerField(default=20)
+    crystal_reward = models.PositiveIntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.get_quest_type_display()} x{self.target_value}"
+
+
+class StudentDailyQuest(models.Model):
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
+    quest = models.ForeignKey(DailyQuest, on_delete=models.CASCADE)
+    progress = models.PositiveIntegerField(default=0)
+    completed = models.BooleanField(default=False)
+    date = models.DateField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('student', 'quest', 'date')
+
+    def __str__(self):
+        return f"{self.student.user.username} - {self.quest} ({self.date})"
+
+

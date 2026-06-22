@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ShopItem, Purchase, Subject, Lesson, Group, TeacherInviteCode, GroupInviteCode
+from .models import ShopItem, Purchase, Subject, Lesson, Group, TeacherInviteCode, GroupInviteCode, LevelReward,DailyQuest,StudentDailyQuest,Badge, StudentBadge, StudentProfile
 
 
 class LessonInline(admin.TabularInline):
@@ -70,3 +70,33 @@ class GroupInviteCodeAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'created_at', 'group')
     search_fields = ('code', 'group__name', 'teacher__user__username')
     readonly_fields = ('created_at',)
+
+
+@admin.register(LevelReward)
+class LevelRewardAdmin(admin.ModelAdmin):
+    list_display = ('level', 'crystals_bonus', 'badge')
+
+@admin.register(DailyQuest)
+class DailyQuestAdmin(admin.ModelAdmin):
+    list_display = ('quest_type', 'target_value', 'xp_reward', 'is_active')
+    list_filter = ('quest_type', 'is_active')
+
+@admin.register(StudentDailyQuest)
+class StudentDailyQuestAdmin(admin.ModelAdmin):
+    list_display = ('student', 'quest', 'progress', 'completed', 'date')
+    list_filter = ('completed', 'date')
+    search_fields = ('student__user__username', 'quest__quest_type')
+
+@admin.register(Badge)
+class BadgeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'condition_type', 'condition_value', 'xp_reward', 'crystal_reward')
+
+@admin.register(StudentBadge)
+class StudentBadgeAdmin(admin.ModelAdmin):
+    list_display = ('student', 'badge', 'created_at')
+    search_fields = ('student__user__username', 'badge__name')
+
+@admin.register(StudentProfile)
+class StudentProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'xp', 'level', 'crystals', 'group')
+    search_fields = ('user__username', 'user__email')
