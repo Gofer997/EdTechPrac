@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
-from api.models import TeacherProfile, StudentProfile, TeacherInviteCode, ShopItem, Purchase, Group, Assignment, Subject, Lesson, Attendance
+from api.models import TeacherProfile, StudentProfile, TeacherInviteCode, ShopItem, Purchase, Group, Assignment, Subject, Lesson, Attendance, StudentStatistics
 
 User = get_user_model()
 
@@ -114,9 +114,17 @@ class LoginSerializer(serializers.Serializer):
 
         refresh = RefreshToken.for_user(user)
 
+        # Determine user role
+        role = None
+        if hasattr(user, 'studentprofile'):
+            role = 'student'
+        elif hasattr(user, 'teacherprofile'):
+            role = 'teacher'
+
         return {
             "refresh": str(refresh),
             "access": str(refresh.access_token),
+            "role": role,
         }
 
 
@@ -201,6 +209,21 @@ class PurchaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Purchase
         fields = ('id', 'item', 'status', 'code', 'created_at', 'activated_at', 'expires_at')
+
+class StudentStatisticsSerializer(serializers.ModelSerializer):
+    student_username = serializers.CharField(source='student.user.username', read_only=True)
+    student_first_name = serializers.CharField(source='student.user.first_name', read_only=True)
+    student_last_name = serializers.CharField(source='student.user.last_name', read_only=True)
+    group_name = serializers.CharField(source='student.group.name', read_only=True)
+    
+    class Meta:
+        model = StudentStatistics
+        fields = [
+            'id', 'student', 'student_username', 'student_first_name', 'student_last_name',
+            'group_name', 'rank', 'completed_assignments', 'incomplete_assignments',
+            'total_xp', 'updated_at'
+        ]
+        read_only_fields = ['id', 'updated_at']
         
 __all__ = [
     "AssignmentSerializer",
@@ -210,6 +233,7 @@ __all__ = [
     "StudentProfileSerializer",
     "TeacherProfileSerializer",
     "LessonSerializer",
+    "StudentStatisticsSerializer",
 ]
 
 

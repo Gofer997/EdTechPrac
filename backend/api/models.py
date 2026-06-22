@@ -405,3 +405,36 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.student} @ {self.lesson}"
+
+
+class StudentStatistics(models.Model):
+    student = models.OneToOneField(StudentProfile, on_delete=models.CASCADE, related_name='statistics')
+    rank = models.IntegerField(default=0, help_text="Место среди учеников в группе")
+    completed_assignments = models.IntegerField(default=0, help_text="Количество выполненных заданий")
+    incomplete_assignments = models.IntegerField(default=0, help_text="Количество невыполненных заданий")
+    total_xp = models.IntegerField(default=0, help_text="Общий опыт")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Статистика ученика"
+        verbose_name_plural = "Статистика учеников"
+
+    def __str__(self):
+        return f"Статистика: {self.student.user.username} (Ранг: {self.rank})"
+
+
+class MonthlyAverageGrade(models.Model):
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='monthly_grades')
+    year = models.IntegerField()
+    month = models.IntegerField()
+    average_grade = models.FloatField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Средняя оценка за месяц"
+        verbose_name_plural = "Средние оценки за месяцы"
+        unique_together = ['student', 'year', 'month']
+        ordering = ['-year', '-month']
+
+    def __str__(self):
+        return f"{self.student.user.username} - {self.month}/{self.year}: {self.average_grade}"

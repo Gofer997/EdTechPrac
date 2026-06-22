@@ -25,6 +25,8 @@ from api.models import (
     Subject,
     Lesson,
     Attendance,
+    StudentStatistics,
+    MonthlyAverageGrade,
 )
 from api.serializers import (
     RegisterSerializer,
@@ -38,6 +40,7 @@ from api.serializers import (
     LessonSerializer,
     LessonCreateSerializer,
     AttendanceSerializer,
+    StudentStatisticsSerializer,
 )
 
 from api.permissions import ( 
@@ -59,6 +62,9 @@ __all__ = [
     "StudentAssignmentsView",
     "GradeAssignmentView",
     "CurrentLessonView",
+    "StudentStatisticsView",
+    "GroupLeaderboardView",
+    "MonthlyGradesView",
 ]
 
 class ShopItemListView(generics.ListAPIView):
@@ -711,6 +717,170 @@ class CurrentLessonView(APIView):
             "current_lesson": None,
             "today_lessons": lessons_data,
             "message": "Выберите урок из списка на сегодня."
+        })
+
+
+class StudentStatisticsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        student = StudentProfile.objects.filter(user=request.user).first()
+        if not student:
+            return Response({"detail": "Только ученики могут просматривать статистику"}, status=403)
+
+        # Get or create statistics for the student
+        statistics, created = StudentStatistics.objects.get_or_create(
+            student=student,
+            defaults={
+                'rank': 0,
+                'completed_assignments': 0,
+                'incomplete_assignments': 0,
+                'total_xp': student.xp
+            }
+        )
+
+        # Calculate actual statistics
+        if student.group:
+            # Count completed assignments (status = SUBMITTED or GRADED)
+            completed_count = Assignment.objects.filter(
+                group=student.group,
+                status__in=[Assignment.Status.SUBMITTED, Assignment.Status.GRADED]
+            ).count()
+
+            # Count incomplete assignments (status = ISSUED and not overdue, or OVERDUE)
+            from django.utils import timezone
+            now = timezone.now()
+            incomplete_count = Assignment.objects.filter(
+                group=student.group,
+                status=Assignment.Status.ISSUED
+            ).filter(due_date__gte=now).count()
+
+            # Calculate rank based on XP within the group
+            group_students = StudentProfile.objects.filter(group=student.group).order_by('-xp')
+            rank = list(group_students).index(student) + 1 if student in group_students else 0
+
+            # Update statistics
+            statistics.completed_assignments = completed_count
+            statistics.incomplete_assignments = incomplete_count
+            statistics.rank = rank
+            statistics.total_xp = student.xp
+            statistics.save()
+
+            # Calculate and store monthly average grades
+            self._calculate_monthly_grades(student)
+
+        serializer = StudentStatisticsSerializer(statistics)
+        return Response(serializer.data)
+
+    def _calculate_monthly_grades(self, student):
+        """Calculate and store average grades for each month"""
+        from django.db.models import Avg
+        from datetime import datetime, timedelta
+
+        # Get all attendances with grades for this student
+        attendances = Attendance.objects.filter(
+            student=student,
+            grade__isnull=False
+        ).select_related('lesson')
+
+        # Group by month and calculate average
+        monthly_data = {}
+        for attendance in attendances:
+            lesson_date = attendance.lesson.date
+            year = lesson_date.year
+            month = lesson_date.month
+            key = (year, month)
+
+            if key not in monthly_data:
+                monthly_data[key] = []
+            monthly_data[key].append(attendance.grade)
+
+        # Store or update monthly averages
+        for (year, month), grades in monthly_data.items():
+            avg_grade = sum(grades) / len(grades)
+            MonthlyAverageGrade.objects.update_or_create(
+                student=student,
+                year=year,
+                month=month,
+                defaults={'average_grade': avg_grade}
+            )
+
+
+class GroupLeaderboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        student = StudentProfile.objects.filter(user=request.user).first()
+        if not student or not student.group:
+            return Response({"detail": "Только ученики в группе могут просматривать лидерборд"}, status=403)
+
+        # Get all students in the group ordered by XP (descending)
+        group_students = StudentProfile.objects.filter(group=student.group).order_by('-xp')
+        
+        leaderboard_data = []
+        for idx, student_profile in enumerate(group_students, start=1):
+            # Get or create statistics for each student
+            stats, _ = StudentStatistics.objects.get_or_create(
+                student=student_profile,
+                defaults={
+                    'rank': idx,
+                    'completed_assignments': 0,
+                    'incomplete_assignments': 0,
+                    'total_xp': student_profile.xp
+                }
+            )
+            
+            # Update rank
+            stats.rank = idx
+            stats.save()
+            
+            leaderboard_data.append({
+                'rank': idx,
+                'student_id': student_profile.id,
+                'username': student_profile.user.username,
+                'first_name': student_profile.user.first_name,
+                'last_name': student_profile.user.last_name,
+                'xp': student_profile.xp,
+                'completed_assignments': stats.completed_assignments,
+                'incomplete_assignments': stats.incomplete_assignments,
+                'is_current_user': student_profile.user == request.user
+            })
+        
+        return Response({
+            'group_name': student.group.name,
+            'leaderboard': leaderboard_data
+        })
+
+
+class MonthlyGradesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        student = StudentProfile.objects.filter(user=request.user).first()
+        if not student:
+            return Response({"detail": "Только ученики могут просматривать оценки"}, status=403)
+
+        # Get monthly grades for the last 6 months
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+
+        now = timezone.now()
+        monthly_grades = MonthlyAverageGrade.objects.filter(
+            student=student
+        ).order_by('-year', '-month')[:6]
+
+        # Format data for chart
+        labels = []
+        data = []
+        for grade in reversed(list(monthly_grades)):
+            month_names = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 
+                          'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+            labels.append(f"{month_names[grade.month - 1]} {grade.year}")
+            data.append(round(grade.average_grade, 2))
+
+        return Response({
+            'labels': labels,
+            'data': data
         })
 
 
