@@ -50,6 +50,9 @@ function Register() {
 
       localStorage.setItem("access", loginRes.data.access);
       localStorage.setItem("refresh", loginRes.data.refresh);
+      if (loginRes.data.role) {
+        localStorage.setItem("role", loginRes.data.role);
+      }
 
       navigate("/");
     } catch (err) {

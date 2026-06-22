@@ -87,6 +87,9 @@ function Login() {
 
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
+      if (res.data.role) {
+        localStorage.setItem("role", res.data.role);
+      }
 
       navigate("/");
     } catch (err) {
