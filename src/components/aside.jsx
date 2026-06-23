@@ -18,19 +18,35 @@ const Aside = () => {
   };
 
   useEffect(() => {
+    const fetchByRole = async (targetRole) => {
+      const endpoint = targetRole === "teacher" ? "teacher/profile/" : "student/profile/";
+      const response = await api.get(endpoint);
+      setProfile(response.data);
+      setRole(targetRole);
+      localStorage.setItem("role", targetRole);
+    };
+
     const fetchProfile = async () => {
       try {
-        const teacher = await api.get("teacher/profile/");
-        setProfile(teacher.data);
-        setRole("teacher");
-      } catch (err) {
-        try {
-          const student = await api.get("student/profile/");
-          setProfile(student.data);
-          setRole("student");
-        } catch (e) {
-          console.error("No profile", e);
+        const storedRole = localStorage.getItem("role");
+
+        if (storedRole === "teacher" || storedRole === "student") {
+          try {
+            await fetchByRole(storedRole);
+            return;
+          } catch {
+            await fetchByRole(storedRole === "teacher" ? "student" : "teacher");
+            return;
+          }
         }
+
+        try {
+          await fetchByRole("student");
+        } catch {
+          await fetchByRole("teacher");
+        }
+      } catch (err) {
+        console.error("No profile", err);
       }
     };
 
@@ -170,13 +186,19 @@ const Aside = () => {
                   Магазин
                 </Button>
 
+                <div className="mb-2 mt-3">
+                  <small className="text-muted text-uppercase" style={{ fontSize: "11px", letterSpacing: "0.5px" }}>
+                    Достижения
+                  </small>
+                </div>
+
                 <Button
                   variant="link"
-                  href="/my-purchases"
+                  href="/badges"
                   className="w-100 text-start mb-1"
                   style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
                 >
-                  Мои покупки
+                  Значки и награды
                 </Button>
               </>
             )}

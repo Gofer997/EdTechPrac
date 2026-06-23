@@ -29,23 +29,35 @@ export default function Header() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const fetchByRole = async (targetRole) => {
+      const endpoint = targetRole === 'teacher' ? 'teacher/profile/' : 'student/profile/'
+      const response = await api.get(endpoint)
+      setProfile(response.data)
+      setRole(targetRole)
+      localStorage.setItem('role', targetRole)
+    }
+
     const fetchProfile = async () => {
       try {
-        const teacher = await api.get('teacher/profile/')
-        setProfile(teacher.data)
-        setRole('teacher')
-      } catch (err) {
-        if (err.response?.status === 403 || err.response?.status === 404) {
+        const storedRole = localStorage.getItem('role')
+
+        if (storedRole === 'teacher' || storedRole === 'student') {
           try {
-            const student = await api.get('student/profile/')
-            setProfile(student.data)
-            setRole('student')
-          } catch (e) {
-            console.error('No profile', e)
+            await fetchByRole(storedRole)
+            return
+          } catch {
+            await fetchByRole(storedRole === 'teacher' ? 'student' : 'teacher')
+            return
           }
-        } else {
-          console.error(err)
         }
+
+        try {
+          await fetchByRole('student')
+        } catch {
+          await fetchByRole('teacher')
+        }
+      } catch (err) {
+        console.error('No profile', err)
       } finally {
         setLoading(false)
       }

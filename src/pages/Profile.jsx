@@ -24,6 +24,8 @@ function Profile() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [myBadges, setMyBadges] = useState([])
+  const [levelRewards, setLevelRewards] = useState([])
   const avatarInputRef = useRef(null)
 
   const handleAvatarChange = async (event) => {
@@ -77,6 +79,19 @@ function Profile() {
         const endpoint = role === 'teacher' ? 'teacher/profile/' : 'student/profile/'
         const response = await api.get(endpoint)
         setProfile(response.data)
+        
+        if (role === 'student') {
+          try {
+            const [badgesRes, rewardsRes] = await Promise.all([
+              api.get('my-badges/'),
+              api.get('level-rewards/'),
+            ]);
+            setMyBadges(badgesRes.data || []);
+            setLevelRewards(rewardsRes.data || []);
+          } catch (err) {
+            console.error('Error fetching badges/rewards:', err);
+          }
+        }
       } catch (error) {
         console.error(error)
         setError(<a href="/login">Попробуйте войти в аккаунт</a>)
@@ -221,10 +236,43 @@ function Profile() {
                             <strong>Уровень:</strong> {profile.level ?? '-'}
                           </p>
                           <p className="mb-1">
-                            <strong>Кристаллы:</strong> {profile.crystals ?? '-'}
+                            <strong>Кристаллы:</strong> {profile.crystals ?? '-'} 💎
                           </p>
                         </Col>
                       </Row>
+
+                      {role === 'student' && (
+                        <>
+                          <hr />
+                          <h6 className="mb-3">Мои значки ({myBadges.length})</h6>
+                          {myBadges.length === 0 ? (
+                            <p className="text-muted small">У вас пока нет значков</p>
+                          ) : (
+                            <div className="d-flex flex-wrap gap-2 mb-3">
+                              {myBadges.map((badge) => (
+                                <Badge key={badge.id} bg="success" pill className="fs-6">
+                                  {badge.badge_name}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+
+                          <h6 className="mb-3">Награды за уровни</h6>
+                          {levelRewards.filter(r => r.obtained).length === 0 ? (
+                            <p className="text-muted small">Пока нет полученных наград за уровни</p>
+                          ) : (
+                            <div className="d-flex flex-wrap gap-2">
+                              {levelRewards.filter(r => r.obtained).map((reward) => (
+                                <Badge key={reward.level} bg="warning" text="dark" pill className="fs-6">
+                                  Ур. {reward.level}
+                                  {reward.crystals_bonus > 0 && ` (+${reward.crystals_bonus} 💎)`}
+                                  {reward.badge && ` (${reward.badge})`}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
 
                       {error && (
                         <Alert variant="danger" className="mt-3">

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/header";
 import Footer from "../components/footer";
 import Aside from "../components/aside";
-import { Container, Row, Col, Card, Spinner, Alert } from "react-bootstrap";
+import { Container, Row, Col, Card, Spinner, Alert, Badge } from "react-bootstrap";
+import DailyQuests from "./DailyQuests";
 import api from "../api.js";
 import { Chart } from "chart.js/auto";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -13,6 +14,7 @@ const Home = () => {
   const [statistics, setStatistics] = useState(null);
   const [leaderboard, setLeaderboard] = useState(null);
   const [monthlyGrades, setMonthlyGrades] = useState(null);
+  const [myBadges, setMyBadges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [role, setRole] = useState("");
@@ -32,6 +34,7 @@ const Home = () => {
       fetchStatistics();
       fetchLeaderboard();
       fetchMonthlyGrades();
+      fetchMyBadges();
     } else {
       setLoading(false);
     }
@@ -64,7 +67,16 @@ const Home = () => {
       const response = await api.get("student/monthly-grades/");
       setMonthlyGrades(response.data);
     } catch (err) {
-      console.log("Monthly grades error:", err);
+      // Silent error
+    }
+  };
+
+  const fetchMyBadges = async () => {
+    try {
+      const response = await api.get("my-badges/");
+      setMyBadges(response.data || []);
+    } catch (err) {
+      // Silent error
     }
   };
 
@@ -179,6 +191,8 @@ const Home = () => {
                 </Col>
               </Row>
 
+              <DailyQuests />
+
               {monthlyGrades && (
                 <Row>
                   <Col md={12}>
@@ -187,6 +201,25 @@ const Home = () => {
                         <Card.Title className="mb-3">Средние оценки по месяцам</Card.Title>
                         <div style={{ height: '300px' }}>
                           <canvas ref={chartRef}></canvas>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                </Row>
+              )}
+
+              {myBadges.length > 0 && (
+                <Row>
+                  <Col md={12}>
+                    <Card className="mb-3">
+                      <Card.Body>
+                        <Card.Title className="mb-3">Мои значки</Card.Title>
+                        <div className="d-flex flex-wrap gap-2">
+                          {myBadges.map((badge) => (
+                            <Badge key={badge.id} bg="success" pill className="fs-6">
+                              {badge.badge_name}
+                            </Badge>
+                          ))}
                         </div>
                       </Card.Body>
                     </Card>

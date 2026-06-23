@@ -29,6 +29,7 @@ const Store = () => {
   const [items, setItems] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [balance, setBalance] = useState(null);
+  const [userLevel, setUserLevel] = useState(1);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loadingItems, setLoadingItems] = useState(true);
@@ -66,9 +67,20 @@ const Store = () => {
     }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get('/student/profile/');
+      setUserLevel(response.data.level || 1);
+      setBalance(response.data.crystals || 0);
+    } catch (err) {
+      // Silent error - might be teacher
+    }
+  };
+
   useEffect(() => {
     fetchItems();
     fetchPurchases();
+    fetchProfile();
   }, []);
 
   const handleBuy = async (itemId) => {
@@ -80,6 +92,7 @@ const Store = () => {
       setMessage(response.data.message || 'Покупка успешна');
       if (response.data.balance !== undefined) setBalance(response.data.balance);
       await fetchPurchases();
+      await fetchProfile();
     } catch (err) {
       if (err.response && err.response.data && err.response.data.error) {
         setError(err.response.data.error);
@@ -136,7 +149,9 @@ const Store = () => {
           </Col>
           <Col xs="auto" className="text-end">
             <div style={{ fontSize: '0.95rem' }}>
-              Баланс: <Badge bg="info" pill style={priceBadgeStyle}>{balance ?? '—'}</Badge>
+              Ваш уровень: <Badge bg="primary" pill style={priceBadgeStyle}>{userLevel}</Badge>
+              <span className="mx-2">|</span>
+              Баланс: <Badge bg="info" pill style={priceBadgeStyle}>{balance ?? '—'} 💎</Badge>
             </div>
           </Col>
         </Row>
@@ -169,20 +184,29 @@ const Store = () => {
                                 <div style={smallMuted}>{item.item_type}</div>
                               </div>
                               <div className="text-end">
-                                <Badge bg="secondary" pill style={priceBadgeStyle}>{item.price} ✦</Badge>
+                                <Badge bg="secondary" pill style={priceBadgeStyle}>{item.price} 💎</Badge>
                                 <div style={smallMuted}>{item.validity_days ? `${item.validity_days} дн.` : 'постоянно'}</div>
                               </div>
                             </div>
                             <div className="flex-grow-1" style={{ marginBottom: '12px', whiteSpace: 'pre-wrap' }}>
                               {item.description || <span style={smallMuted}>Описание отсутствует</span>}
                             </div>
+                            <div className="mb-2">
+                              <Badge bg={item.required_level <= userLevel ? "success" : "warning"} pill>
+                                Уровень {item.required_level}
+                              </Badge>
+                              {item.required_level > userLevel && (
+                                <span style={smallMuted} className="ms-2">(нужно {item.required_level} ур.)</span>
+                              )}
+                            </div>
                             <Stack direction="horizontal" gap={2} className="mt-auto">
                               <Button
-                                variant="primary"
+                                variant={item.required_level <= userLevel ? "primary" : "secondary"}
                                 onClick={() => handleBuy(item.id)}
-                                disabled={buying === item.id}
+                                disabled={buying === item.id || item.required_level > userLevel}
                               >
-                                {buying === item.id ? <Spinner as="span" animation="border" size="sm" /> : 'Купить'}
+                                {buying === item.id ? <Spinner as="span" animation="border" size="sm" /> : 
+                                 item.required_level > userLevel ? 'Недоступно' : 'Купить'}
                               </Button>
                               <Button variant="outline-secondary" onClick={() => navigator.clipboard?.writeText(item.id.toString())}>
                                 Копировать ID
@@ -251,9 +275,15 @@ const Store = () => {
                 <Card.Title>Профиль и баланс</Card.Title>
                 <div style={{ marginBottom: '8px' }}>
                   <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>
-                    {balance !== null ? `${balance} ✦` : <span style={smallMuted}>—</span>}
+                    {balance !== null ? `${balance} 💎` : <span style={smallMuted}>—</span>}
                   </div>
                   <div style={smallMuted}>Кристаллы используются для покупок в магазине</div>
+                </div>
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>
+                    Уровень {userLevel}
+                  </div>
+                  <div style={smallMuted}>Ваш текущий уровень открывает доступ к товарам</div>
                 </div>
                 <div className="d-grid gap-2">
                   <Button variant="outline-primary" onClick={fetchPurchases} disabled={loadingPurchases}>
