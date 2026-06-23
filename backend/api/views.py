@@ -27,6 +27,11 @@ from api.models import (
     Attendance,
     StudentStatistics,
     MonthlyAverageGrade,
+    DailyQuest,
+    StudentDailyQuest,
+    Badge,
+    StudentBadge,
+    LevelReward,
 )
 from api.serializers import (
     RegisterSerializer,
@@ -398,7 +403,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             new_status = request.data.get("status")
             answer_text = request.data.get("answer")
 
-            if new_status == Assignment.Status.SUBMITTED:
+            if new_status != Assignment.Status.SUBMITTED:
                 raise PermissionDenied("Можно отправлять только сделанное задание (status = submitted)")
 
             if not answer_text or not isinstance(answer_text, str) or len(answer_text.strip()) == 0:
@@ -1234,7 +1239,11 @@ class DailyQuestView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
     def get(self, request):
-        student = request.user.studentprofile
+        try:
+            student = request.user.studentprofile
+        except StudentProfile.DoesNotExist:
+            return Response([], status=status.HTTP_200_OK)
+        
         generate_daily_quests(student)  # создаст, если нет
         today = timezone.now().date()
         quests = StudentDailyQuest.objects.filter(student=student, date=today)
@@ -1277,7 +1286,11 @@ class MyBadgeView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
     def get(self, request):
-        student = request.user.studentprofile
+        try:
+            student = request.user.studentprofile
+        except StudentProfile.DoesNotExist:
+            return Response([], status=status.HTTP_200_OK)
+        
         obtained = StudentBadge.objects.filter(student=student).select_related('badge')
         data = [{
             'id': sb.id,

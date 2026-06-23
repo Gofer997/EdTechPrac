@@ -66,10 +66,10 @@ def on_assignment_submitted(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Attendance)
 def on_attendance_saved(sender, instance, created, **kwargs):
     student = instance.student
-    if instance.is_present and not instance.xp_granted:
-        student.add_xp(5, "Посещение урока")
-        instance.xp_granted = True
-        instance.save(update_fields=['xp_granted'])
+    reason = f"Посещение урока #{instance.lesson_id}"
+    # Награда за посещение выдается один раз на урок даже при повторных сохранениях.
+    if instance.is_present and not XPEvent.objects.filter(student=student, reason=reason).exists():
+        student.add_xp(5, reason)
         update_daily_quests(student, 'attend_lesson')
         check_and_award_badges(student)
 

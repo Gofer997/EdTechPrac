@@ -107,20 +107,27 @@ class StudentProfile(models.Model):
             except StudentProfile.DoesNotExist:
                 old_avatar_name = None
 
-        if self.avatar and hasattr(self.avatar, "file"):
+        if self.avatar:
             try:
                 self.avatar.open()
-                img = Image.open(self.avatar)
-                img = img.convert("RGB")
-                size = (256, 256)
-                img = ImageOps.fit(img, size, Image.Resampling.LANCZOS)
-                buf = BytesIO()
-                img.save(buf, format="AVIF", quality=85, optimize=True)
-                buf.seek(0)
-                filename = f"{self.user.pk}_{int(timezone.now().timestamp())}.avif"
-                self.avatar.save(filename, ContentFile(buf.read()), save=False)
+            except FileNotFoundError:
+                # У профиля может быть устаревший путь к аватару; не роняем сохранение XP/уровня.
+                pass
             except Exception:
                 pass
+            else:
+                try:
+                    img = Image.open(self.avatar)
+                    img = img.convert("RGB")
+                    size = (256, 256)
+                    img = ImageOps.fit(img, size, Image.Resampling.LANCZOS)
+                    buf = BytesIO()
+                    img.save(buf, format="AVIF", quality=85, optimize=True)
+                    buf.seek(0)
+                    filename = f"{self.user.pk}_{int(timezone.now().timestamp())}.avif"
+                    self.avatar.save(filename, ContentFile(buf.read()), save=False)
+                except Exception:
+                    pass
 
         super().save(*args, **kwargs)
 

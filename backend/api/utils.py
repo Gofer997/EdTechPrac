@@ -8,10 +8,34 @@ def generate_daily_quests(student):
     if existing.exists():
         return
 
-    active_quests = DailyQuest.objects.filter(is_active=True)
-    # Например, берём до 3 случайных
-    quests = active_quests.order_by('?')[:3]
-    for quest in quests:
+    quests_to_create = []
+
+    # Всегда добавляем дефолтное задание "сдать 1 задание"
+    default_quest = DailyQuest.objects.filter(
+        quest_type='submit_assignment',
+        target_value=1,
+        is_active=True
+    ).first()
+    
+    if default_quest:
+        quests_to_create.append(default_quest)
+    else:
+        # Если дефолтного нет в базе, создаём на лету
+        default_quest = DailyQuest.objects.create(
+            quest_type='submit_assignment',
+            target_value=1,
+            xp_reward=20,
+            crystal_reward=1,
+            is_active=True
+        )
+        quests_to_create.append(default_quest)
+
+    # Добавляем другие случайные задания (до 3 всего)
+    active_quests = DailyQuest.objects.filter(is_active=True).exclude(id=default_quest.id)
+    other_quests = active_quests.order_by('?')[:2]
+    quests_to_create.extend(other_quests)
+
+    for quest in quests_to_create:
         StudentDailyQuest.objects.create(
             student=student,
             quest=quest,
@@ -56,7 +80,7 @@ def meets_badge_condition(student, badge):
     from api.models import Attendance, Assignment, Purchase
     if badge.condition_type == 'lessons_attended':
         count = Attendance.objects.filter(
-            student=student, is_present=True, xp_granted=True
+            student=student, is_present=True
         ).count()
         return count >= badge.condition_value
     elif badge.condition_type == 'assignments_submitted':
