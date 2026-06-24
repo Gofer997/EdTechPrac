@@ -12,6 +12,7 @@ import {
   Col,
 } from 'react-bootstrap'
 import api from '../api.js'
+import Notifications from './Notifications.jsx'
 
 function Stat({ icon, value, label }) {
   return (
@@ -106,6 +107,11 @@ export default function Header() {
           </Nav>
 
           <div className="d-flex align-items-center">
+            {!loading && profile && (
+              <div className="me-3">
+                <Notifications />
+              </div>
+            )}
             {!loading && profile ? (
               <Dropdown align="end">
                 <Dropdown.Toggle
