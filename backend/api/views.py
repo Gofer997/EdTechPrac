@@ -729,15 +729,16 @@ class GradeAssignmentView(APIView):
 
         assignment.grade = grade
         assignment.feedback = feedback
-        subject_obj = assignment.group.lessons.first().subject
         
-        if grade is not None and assignment.subject:
-            from api.models import Grade
-            Grade.objects.create(
-                student=student,
-                subject=assignment.subject,
-                value=grade
-            )
+        if grade is not None:
+            assignment.status = Assignment.Status.GRADED
+            if assignment.subject:
+                from api.models import Grade
+                Grade.objects.create(
+                    student=student,
+                    subject=assignment.subject,
+                    value=grade
+                )
         
         assignment.save()
         if grade is not None:
