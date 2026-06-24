@@ -39,6 +39,12 @@ from api.views import (
 from . import views
 from api.views_admin import AdminDashboardView, AdminInviteCodeView, AdminGroupLessonsView, AdminGroupLessonDetailView
 from rest_framework_simplejwt.views import TokenRefreshView
+from api.views_notifications import (
+    NotificationListView,
+    NotificationUnreadCountView,
+    NotificationMarkReadView
+)
+
 
 router = DefaultRouter()
 router.register(r"groups", GroupViewSet, basename="groups")
@@ -86,6 +92,8 @@ urlpatterns = [
     path("badges/", BadgeListView.as_view(), name="badge-list"),
     path("my-badges/", MyBadgeView.as_view(), name="my-badges"),
     path("level-rewards/", LevelRewardListView.as_view(), name="level-rewards"),
-    
+    path("notifications/", NotificationListView.as_view(), name="notifications-list"),
+    path("notifications/unread-count/", NotificationUnreadCountView.as_view(), name="notifications-unread-count"),
+    path("notifications/mark-read/", NotificationMarkReadView.as_view(), name="notifications-mark-read"),
 
 ]

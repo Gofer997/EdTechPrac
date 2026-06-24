@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
-from api.models import TeacherProfile, StudentProfile, TeacherInviteCode, ShopItem, Purchase, Group, Assignment, Subject, Lesson, Attendance, StudentStatistics
+from api.models import TeacherProfile, StudentProfile, TeacherInviteCode, ShopItem, Purchase, Group, Assignment, Subject, Lesson, Attendance, StudentStatistics, Notification
 
 User = get_user_model()
 
@@ -248,3 +248,13 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
     def get_student_name(self, obj):
         return f"{obj.student.user.first_name} {obj.student.user.last_name}"
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    sender_name = serializers.CharField(source='sender.username', read_only=True)
+
+    class Meta:
+        model = Notification
+        fields = ['id', 'recipient', 'sender', 'sender_name', 'notification_type',
+                  'title', 'message', 'link', 'is_read', 'created_at']
+        read_only_fields = ['id', 'created_at']

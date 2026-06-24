@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.db import transaction, IntegrityError
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
+from api.notification_utils import create_notification
 
 from typing import Any
 import secrets
@@ -191,10 +192,19 @@ class ChangeCrystalsView(APIView):
         if student.crystals < 0:
             student.crystals = 0
         student.save()
+        create_notification(
+            recipient=student.user,
+            notification_type='crystals_awarded',
+            title='Начислены кристаллы',
+            message=f'Вам начислено {amount} кристаллов. Текущий баланс: {student.crystals}',
+            sender=request.user,
+            link='/shop'
+            )
         return Response({
             "student_id": student.pk,
             "crystals": student.crystals
         })
+
 
 
 class RegisterView(generics.CreateAPIView):
@@ -364,7 +374,19 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             return Assignment.objects.filter(group=student.group).exclude(
                 status=Assignment.Status.REVOKED
             )
+            
 
+        assignment = serializer.instance
+        students = StudentProfile.objects.filter(group=assignment.group)
+        for student in students:
+            create_notification(
+            recipient=student.user,
+            notification_type='new_assignment',
+            title='Новое задание',
+            message=f'Появилось новое задание: "{assignment.title}". Срок до {assignment.due_date.strftime("%d.%m.%Y %H:%M")}',
+            sender=request.user,
+            link=f'/assignments/{assignment.id}'
+        )
         return Assignment.objects.none()
 
     def perform_create(self, serializer):
@@ -398,6 +420,19 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied(
                     f"Недопустимые поля: {', '.join(invalid_fields)}. "
                     "Нужны только: status, answer."
+                )
+            if assignment.status == Assignment.Status.ISSUED:
+                student.add_xp(15, f"Сдача задания: {assignment.title}")
+                update_daily_quests(student, 'submit_assignment')
+                check_and_award_badges(student)
+                # Уведомление учителю
+                create_notification(
+                    recipient=assignment.teacher.user,
+                    notification_type='assignment_submitted',
+                    title=f'Сдано задание "{assignment.title}"',
+                    message=f'Ученик {student.user.first_name} {student.user.last_name} отправил решение.',
+                    sender=request.user,
+                    link=f'/teacher/assignments/{assignment.id}'  # ссылка на проверку
                 )
 
             new_status = request.data.get("status")
@@ -705,6 +740,15 @@ class GradeAssignmentView(APIView):
             )
         
         assignment.save()
+        if grade is not None:
+            create_notification(
+        recipient=student.user,
+        notification_type='assignment_graded',
+        title=f'Оценка за задание "{assignment.title}"',
+        message=f'Вы получили оценку {grade}. {feedback or ""}',
+        sender=request.user,
+        link=f'/assignments/{assignment.id}'  # условная ссылка для фронтенда
+    )
 
         return Response({
             "id": assignment.id,
@@ -1227,6 +1271,24 @@ class LessonAttendanceView(APIView):
 
                 updated.append(AttendanceSerializer(attendance).data)
 
+        if grade is not None:
+            create_notification(
+            recipient=student.user,
+            notification_type='lesson_graded',
+            title=f'Оценка за урок {lesson.subject}',
+            message=f'Вы получили оценку {grade}.',
+            sender=request.user,
+            link=f'/lessons/{lesson.id}'
+        )
+        elif is_present and not attendance.crystals_granted_before:  # если отметка присутствия без оценки
+            create_notification(
+            recipient=student.user,
+            notification_type='attendance_marked',
+            title=f'Отметка о посещении {lesson.subject}',
+            message='Вы отмечены как присутствующий.',
+            sender=request.user,
+            link=f'/lessons/{lesson.id}'
+        )
         response_status = status.HTTP_200_OK if not errors else status.HTTP_207_MULTI_STATUS
         return Response({
             "updated": updated,

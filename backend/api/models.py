@@ -88,6 +88,16 @@ class StudentProfile(models.Model):
                 )
             except LevelReward.DoesNotExist:
                 pass
+        # после цикла for level in range...
+        create_notification(
+            recipient=self.user,
+            notification_type='level_up',
+            title=f'Новый уровень {new_level}!',
+            message=f'Поздравляем! Вы достигли {new_level} уровня.',
+            link='/profile'
+        )
+
+
     def save(self, *args, **kwargs):
     # 1. Если XP изменилось, пересчитываем уровень до обработки аватара
         if self.pk:
@@ -545,3 +555,30 @@ class StudentDailyQuest(models.Model):
         return f"{self.student.user.username} - {self.quest} ({self.date})"
 
 
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('assignment_graded', 'Задание оценено'),
+        ('assignment_submitted', 'Задание сдано'),
+        ('lesson_graded', 'Оценка за урок'),
+        ('new_assignment', 'Новое задание'),
+        ('attendance_marked', 'Отметка о посещении'),
+        ('level_up', 'Повышение уровня'),
+        ('badge_earned', 'Получен значок'),
+        ('crystals_awarded', 'Начислены кристаллы'),
+    ]
+
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='sent_notifications')
+    notification_type = models.CharField(max_length=32, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=256)
+    message = models.TextField()
+    link = models.CharField(max_length=512, blank=True, help_text="Опциональная ссылка для перехода")
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.notification_type} для {self.recipient.username}"
