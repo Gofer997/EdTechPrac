@@ -582,3 +582,22 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.notification_type} для {self.recipient.username}"
+
+class RouletteBet(models.Model):
+    COLOR_CHOICES = [
+        ('red', 'Красное'),
+        ('black', 'Черное'),
+        ('green', 'Зеленое'),
+    ]
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='roulette_bets')
+    amount = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    choice = models.CharField(max_length=5, choices=COLOR_CHOICES)
+    result_color = models.CharField(max_length=5, choices=COLOR_CHOICES, null=True, blank=True)
+    win = models.BooleanField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.student.user.username} ставит {self.amount} на {self.get_choice_display()}"

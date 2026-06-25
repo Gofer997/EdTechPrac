@@ -35,6 +35,7 @@ from api.views import (
     BadgeListView,
     MyBadgeView,
     LevelRewardListView,
+    RouletteView,
 )
 from . import views
 from api.views_admin import AdminDashboardView, AdminInviteCodeView, AdminGroupLessonsView, AdminGroupLessonDetailView
@@ -95,5 +96,5 @@ urlpatterns = [
     path("notifications/", NotificationListView.as_view(), name="notifications-list"),
     path("notifications/unread-count/", NotificationUnreadCountView.as_view(), name="notifications-unread-count"),
     path("notifications/mark-read/", NotificationMarkReadView.as_view(), name="notifications-mark-read"),
-
+    path('roulette/', RouletteView.as_view(), name='roulette'),
 ]

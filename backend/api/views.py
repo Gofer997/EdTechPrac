@@ -10,6 +10,7 @@ from django.db import transaction, IntegrityError
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from api.notification_utils import create_notification
+import random
 
 from typing import Any
 import secrets
@@ -33,6 +34,7 @@ from api.models import (
     Badge,
     StudentBadge,
     LevelReward,
+    RouletteBet,
 )
 from api.serializers import (
     RegisterSerializer,
@@ -1383,3 +1385,85 @@ class LevelRewardListView(APIView):
                 'obtained': obtained,
             })
         return Response(data)
+
+
+class RouletteView(APIView):
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def post(self, request):
+        student = StudentProfile.objects.get(user=request.user)
+        amount = request.data.get('amount')
+        choice = request.data.get('choice')
+
+        # Валидация
+        if not amount or not choice:
+            return Response({"error": "Укажите amount и choice (red/black/green)"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            amount = int(amount)
+            if amount <= 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response({"error": "Сумма ставки должна быть положительным целым числом"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if choice not in ['red', 'black', 'green']:
+            return Response({"error": "choice должен быть 'red', 'black' или 'green'"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if student.crystals < amount:
+            return Response({"error": "Недостаточно кристаллов"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Генерация результата: вероятности как в европейской рулетке (18 красных, 18 чёрных, 1 зеро)
+        colors = ['red', 'black', 'green']
+        weights = [18/37, 18/37, 1/37]
+        result_color = random.choices(colors, weights=weights, k=1)[0]
+
+        # Расчёт выигрыша
+        if choice == result_color:
+            if result_color == 'green':
+                multiplier = 5
+            else:
+                multiplier = 2
+            win = True
+            win_amount = amount * multiplier
+        else:
+            win = False
+            win_amount = 0
+
+        # Атомарное обновление баланса и создание записи
+        with transaction.atomic():
+            student = StudentProfile.objects.select_for_update().get(pk=student.pk)
+            # Списываем ставку
+            student.crystals -= amount
+            # Начисляем выигрыш, если есть
+            if win:
+                student.crystals += win_amount
+            student.save(update_fields=['crystals'])
+
+            bet = RouletteBet.objects.create(
+                student=student,
+                amount=amount,
+                choice=choice,
+                result_color=result_color,
+                win=win
+            )
+
+        return Response({
+            "result": result_color,
+            "win": win,
+            "win_amount": win_amount if win else 0,
+            "new_balance": student.crystals
+        })
+
+    def get(self, request):
+        student = StudentProfile.objects.get(user=request.user)
+        bets = RouletteBet.objects.filter(student=student).order_by('-created_at')[:20]
+        history = []
+        for bet in bets:
+            history.append({
+                "id": bet.id,
+                "amount": bet.amount,
+                "choice": bet.choice,
+                "result_color": bet.result_color,
+                "win": bet.win,
+                "created_at": bet.created_at.isoformat()
+            })
+        return Response(history)
