@@ -98,19 +98,15 @@ class BuyItemView(APIView):
         except ShopItem.DoesNotExist:
             return Response({"error": "Товар не найден или недоступен"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Открываем атомарную транзакцию
         with transaction.atomic():
-            # Блокируем строку профиля студента до завершения транзакции (защита от race conditions)
             student = StudentProfile.objects.select_for_update().get(user=request.user)
 
             if student.crystals < item.price:
                 return Response({"error": "Недостаточно кристаллов"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Списываем кристаллы
             student.crystals -= item.price
             student.save(update_fields=['crystals'])
 
-            # Создаем запись о покупке (код сгенерируется в методе save)
             purchase = Purchase.objects.create(student=student, item=item)
             xp_amount = item.price // 2
             if xp_amount > 0:
@@ -134,7 +130,6 @@ class MyPurchasesView(generics.ListAPIView):
         student = self.request.user.studentprofile
         purchases = Purchase.objects.filter(student=student)
         
-        # Актуализируем статусы просроченных покупок при запросе
         for p in purchases.filter(status='pending', expires_at__lt=timezone.now()):
             p.check_expiration()
             
@@ -152,14 +147,12 @@ class ActivatePurchaseView(APIView):
         except Purchase.DoesNotExist:
             return Response({"error": "Покупка не найдена"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Проверяем не истек ли срок перед активацией
         purchase.check_expiration()
 
         if purchase.status != 'pending':
             return Response({"error": f"Невозможно активировать. Текущий статус: {purchase.get_status_display()}"}, 
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Активируем
         purchase.status = 'activated'
         purchase.activated_at = timezone.now()
         purchase.save(update_fields=['status', 'activated_at'])
@@ -408,7 +401,6 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         assignment = self.get_object()
         teacher = TeacherProfile.objects.filter(user=request.user).first()
         student = StudentProfile.objects.filter(user=request.user).first()
-        # какой статус студент указал в запросе
         new_status = request.data.get("status")
 
         if student:
@@ -427,14 +419,13 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 student.add_xp(15, f"Сдача задания: {assignment.title}")
                 update_daily_quests(student, 'submit_assignment')
                 check_and_award_badges(student)
-                # Уведомление учителю
-                create_notification(
+            create_notification(
                     recipient=assignment.teacher.user,
                     notification_type='assignment_submitted',
                     title=f'Сдано задание "{assignment.title}"',
                     message=f'Ученик {student.user.first_name} {student.user.last_name} отправил решение.',
                     sender=request.user,
-                    link=f'/teacher/assignments/{assignment.id}'  # ссылка на проверку
+                    link=f'/teacher/assignments/{assignment.id}'
                 )
 
             new_status = request.data.get("status")
@@ -460,8 +451,6 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             except StudentProfile.DoesNotExist:
                 pass
             else:
-                # Проверяем, что это первый раз сдаётся (можно через флаг was_submitted)
-                # Но Assignment не хранит историю. Просто дадим XP, если статус меняется с ISSUED на SUBMITTED.
                 if assignment.status == Assignment.Status.ISSUED:
                     student.add_xp(15, f"Сдача задания: {assignment.title}")
                     update_daily_quests(student, 'submit_assignment')
@@ -479,15 +468,12 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied(
                     "Нельзя изменить группу задания после создания"
                 )
-                # то есть группу для которой препод закинул задание. задаётся только разово когда препод выдаёт задание
 
             if (
                 assignment.status == Assignment.Status.GRADED
                 and "due_date" in request.data
             ):
                 raise PermissionDenied("Нельзя изменить дедлайн после оценивания")
-                # если препод поставил оценку студенту на его сделанное задание,
-                # то дедлайн незя менять (логично)
 
             if new_status:
                 if new_status == Assignment.Status.SUBMITTED:
@@ -615,7 +601,6 @@ class ScheduleView(APIView):
         serializer = LessonSerializer(lessons, many=True)
         lessons_data = serializer.data
 
-        # For students, add attendance grades
         if student:
             lesson_ids = [lesson['id'] for lesson in lessons_data]
             attendances = Attendance.objects.filter(
@@ -750,7 +735,7 @@ class GradeAssignmentView(APIView):
         title=f'Оценка за задание "{assignment.title}"',
         message=f'Вы получили оценку {grade}. {feedback or ""}',
         sender=request.user,
-        link=f'/assignments/{assignment.id}'  # условная ссылка для фронтенда
+        link=f'/assignments/{assignment.id}'
     )
 
         return Response({
@@ -774,7 +759,6 @@ class CurrentLessonView(APIView):
         now = timezone.now()
         current_date = now.date()
 
-        # Всегда возвращаем список уроков на сегодня (без фильтрации по времени сервера)
         today_lessons = Lesson.objects.filter(
             teacher=teacher,
             date=current_date
@@ -810,7 +794,6 @@ class StudentStatisticsView(APIView):
         if not student:
             return Response({"detail": "Только ученики могут просматривать статистику"}, status=403)
 
-        # Get or create statistics for the student
         statistics, created = StudentStatistics.objects.get_or_create(
             student=student,
             defaults={
@@ -821,34 +804,26 @@ class StudentStatisticsView(APIView):
             }
         )
 
-        # Calculate actual statistics
         if student.group:
-            # Count completed assignments (status = SUBMITTED or GRADED)
             completed_count = Assignment.objects.filter(
                 group=student.group,
                 status__in=[Assignment.Status.SUBMITTED, Assignment.Status.GRADED]
             ).count()
 
-            # Count incomplete assignments (status = ISSUED and not overdue, or OVERDUE)
-            from django.utils import timezone
-            now = timezone.now()
             incomplete_count = Assignment.objects.filter(
                 group=student.group,
                 status=Assignment.Status.ISSUED
             ).filter(due_date__gte=now).count()
 
-            # Calculate rank based on XP within the group
             group_students = StudentProfile.objects.filter(group=student.group).order_by('-xp')
             rank = list(group_students).index(student) + 1 if student in group_students else 0
 
-            # Update statistics
             statistics.completed_assignments = completed_count
             statistics.incomplete_assignments = incomplete_count
             statistics.rank = rank
             statistics.total_xp = student.xp
             statistics.save()
 
-            # Calculate and store monthly average grades
             self._calculate_monthly_grades(student)
 
         serializer = StudentStatisticsSerializer(statistics)
@@ -859,13 +834,11 @@ class StudentStatisticsView(APIView):
         from django.db.models import Avg
         from datetime import datetime, timedelta
 
-        # Get all attendances with grades for this student
         attendances = Attendance.objects.filter(
             student=student,
             grade__isnull=False
         ).select_related('lesson')
 
-        # Group by month and calculate average
         monthly_data = {}
         for attendance in attendances:
             lesson_date = attendance.lesson.date
@@ -877,7 +850,6 @@ class StudentStatisticsView(APIView):
                 monthly_data[key] = []
             monthly_data[key].append(attendance.grade)
 
-        # Store or update monthly averages
         for (year, month), grades in monthly_data.items():
             avg_grade = sum(grades) / len(grades)
             MonthlyAverageGrade.objects.update_or_create(
@@ -896,12 +868,10 @@ class GroupLeaderboardView(APIView):
         if not student or not student.group:
             return Response({"detail": "Только ученики в группе могут просматривать лидерборд"}, status=403)
 
-        # Get all students in the group ordered by XP (descending)
         group_students = StudentProfile.objects.filter(group=student.group).order_by('-xp')
         
         leaderboard_data = []
         for idx, student_profile in enumerate(group_students, start=1):
-            # Get or create statistics for each student
             stats, _ = StudentStatistics.objects.get_or_create(
                 student=student_profile,
                 defaults={
@@ -912,7 +882,6 @@ class GroupLeaderboardView(APIView):
                 }
             )
             
-            # Update rank
             stats.rank = idx
             stats.save()
             
@@ -942,7 +911,6 @@ class MonthlyGradesView(APIView):
         if not student:
             return Response({"detail": "Только ученики могут просматривать оценки"}, status=403)
 
-        # Get monthly grades for the last 6 months
         from datetime import datetime, timedelta
         from django.utils import timezone
 
@@ -951,7 +919,6 @@ class MonthlyGradesView(APIView):
             student=student
         ).order_by('-year', '-month')[:6]
 
-        # Format data for chart
         labels = []
         data = []
         for grade in reversed(list(monthly_grades)):
@@ -1178,7 +1145,6 @@ class LessonAttendanceView(APIView):
         lesson = self.get_lesson_and_check_access(lesson_id)
         students = StudentProfile.objects.filter(group=lesson.group)
 
-        # Создаём пропущенные записи Attendance (атомарно, с игнорированием дубликатов)
         with transaction.atomic():
             for student in students:
                 Attendance.objects.get_or_create(
@@ -1216,7 +1182,6 @@ class LessonAttendanceView(APIView):
                     errors.append({"item": item, "error": "student_id обязателен"})
                     continue
 
-                # Validate grade
                 if grade is not None:
                     try:
                         grade = int(grade)
@@ -1227,7 +1192,6 @@ class LessonAttendanceView(APIView):
                         errors.append({"student_id": student_id, "error": "Оценка должна быть числом"})
                         continue
 
-                # Validate crystals_awarded
                 if crystals_awarded is not None:
                     try:
                         crystals_awarded = int(crystals_awarded)
@@ -1260,14 +1224,12 @@ class LessonAttendanceView(APIView):
                     attendance.crystals_awarded = crystals_awarded
                     attendance.save(update_fields=['grade', 'crystals_awarded'])
 
-                # Начисляем кристалл, если отметили присутствие и кристаллы ещё не выданы
                 if is_present and not attendance.crystals_granted:
                     student.crystals += 1
                     student.save(update_fields=['crystals'])
                     attendance.crystals_granted = True
                     attendance.save(update_fields=['crystals_granted'])
 
-                # Начисляем дополнительные кристаллы (если указано)
                 if crystals_awarded > 0:
                     student.crystals += crystals_awarded
                     student.save(update_fields=['crystals'])
@@ -1283,7 +1245,7 @@ class LessonAttendanceView(APIView):
             sender=request.user,
             link=f'/lessons/{lesson.id}'
         )
-        elif is_present and not attendance.crystals_granted_before:  # если отметка присутствия без оценки
+        elif is_present and not attendance.crystals_granted_before:
             create_notification(
             recipient=student.user,
             notification_type='attendance_marked',
@@ -1309,7 +1271,7 @@ class DailyQuestView(APIView):
         except StudentProfile.DoesNotExist:
             return Response([], status=status.HTTP_200_OK)
         
-        generate_daily_quests(student)  # создаст, если нет
+        generate_daily_quests(student)
         today = timezone.now().date()
         quests = StudentDailyQuest.objects.filter(student=student, date=today)
         data = []
@@ -1411,12 +1373,9 @@ class RouletteView(APIView):
         if student.crystals < amount:
             return Response({"error": "Недостаточно кристаллов"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Генерация результата: вероятности как в европейской рулетке (18 красных, 18 чёрных, 1 зеро)
         colors = ['red', 'black', 'green']
         weights = [18/37, 18/37, 1/37]
         result_color = random.choices(colors, weights=weights, k=1)[0]
-
-        # Расчёт выигрыша
         if choice == result_color:
             if result_color == 'green':
                 multiplier = 5
@@ -1428,12 +1387,9 @@ class RouletteView(APIView):
             win = False
             win_amount = 0
 
-        # Атомарное обновление баланса и создание записи
         with transaction.atomic():
-            student = StudentProfile.objects.select_for_update().get(pk=student.pk)
-            # Списываем ставку
+            student = StudentProfile.objects.select_for_update().get(pk=student.pk)         
             student.crystals -= amount
-            # Начисляем выигрыш, если есть
             if win:
                 student.crystals += win_amount
             student.save(update_fields=['crystals'])

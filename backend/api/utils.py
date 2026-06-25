@@ -10,7 +10,6 @@ def generate_daily_quests(student):
 
     quests_to_create = []
 
-    # Всегда добавляем дефолтное задание "сдать 1 задание"
     default_quest = DailyQuest.objects.filter(
         quest_type='submit_assignment',
         target_value=1,
@@ -20,7 +19,6 @@ def generate_daily_quests(student):
     if default_quest:
         quests_to_create.append(default_quest)
     else:
-        # Если дефолтного нет в базе, создаём на лету
         default_quest = DailyQuest.objects.create(
             quest_type='submit_assignment',
             target_value=1,
@@ -30,7 +28,6 @@ def generate_daily_quests(student):
         )
         quests_to_create.append(default_quest)
 
-    # Добавляем другие случайные задания (до 3 всего)
     active_quests = DailyQuest.objects.filter(is_active=True).exclude(id=default_quest.id)
     other_quests = active_quests.order_by('?')[:2]
     quests_to_create.extend(other_quests)
@@ -57,7 +54,6 @@ def update_daily_quests(student, quest_type, increment=1):
         sq.progress += increment
         if sq.progress >= sq.quest.target_value:
             sq.completed = True
-            # Начисляем награду
             student.add_xp(sq.quest.xp_reward, f"Квест: {sq.quest.get_quest_type_display()}")
             student.crystals += sq.quest.crystal_reward
             student.save(update_fields=['crystals'])
@@ -84,11 +80,7 @@ def meets_badge_condition(student, badge):
         ).count()
         return count >= badge.condition_value
     elif badge.condition_type == 'assignments_submitted':
-        # Считаем количество сданных заданий (по изменению статуса? Нужна связь студента с Assignment через отдельную модель,
-        # но в текущей архитектуре Assignment общий на группу. Будем считать через GradeAssignmentView? Неудобно.
-        # Упростим: если оценка за задание != None, считаем это сдачей.
-        # Лучше завести модель StudentAssignment, но пока пропустим или реализуем позже.
-        return False  # placeholder
+        return False
     elif badge.condition_type == 'total_xp':
         return student.xp >= badge.condition_value
     elif badge.condition_type == 'items_bought':

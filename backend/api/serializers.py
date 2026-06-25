@@ -113,8 +113,6 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Неверные учётные данные")
 
         refresh = RefreshToken.for_user(user)
-
-        # Determine user role
         role = None
         if hasattr(user, 'studentprofile'):
             role = 'student'

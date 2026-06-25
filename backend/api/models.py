@@ -88,7 +88,6 @@ class StudentProfile(models.Model):
                 )
             except LevelReward.DoesNotExist:
                 pass
-        # после цикла for level in range...
         create_notification(
             recipient=self.user,
             notification_type='level_up',
@@ -99,7 +98,6 @@ class StudentProfile(models.Model):
 
 
     def save(self, *args, **kwargs):
-    # 1. Если XP изменилось, пересчитываем уровень до обработки аватара
         if self.pk:
             try:
                 old = StudentProfile.objects.get(pk=self.pk)
@@ -108,7 +106,6 @@ class StudentProfile(models.Model):
             except StudentProfile.DoesNotExist:
                 pass
 
-    # 2. Старая логика обработки аватара (без изменений)
         old_avatar_name = None
         if self.pk:
             try:
@@ -121,7 +118,6 @@ class StudentProfile(models.Model):
             try:
                 self.avatar.open()
             except FileNotFoundError:
-                # У профиля может быть устаревший путь к аватару; не роняем сохранение XP/уровня.
                 pass
             except Exception:
                 pass
@@ -141,7 +137,6 @@ class StudentProfile(models.Model):
 
         super().save(*args, **kwargs)
 
-    # 3. Удаление старого аватара (если он изменился)
         try:
             if old_avatar_name and old_avatar_name != (self.avatar.name if self.avatar else None):
                 storage = self.avatar.storage
@@ -359,7 +354,6 @@ class Grade(models.Model):
 class Badge(models.Model):
     name = models.CharField(max_length=128)
     description = models.TextField()
-    # Добавляем условия для автоматической выдачи
     CONDITION_TYPES = [
         ('lessons_attended', 'Посещено уроков'),
         ('assignments_submitted', 'Сдано заданий'),
@@ -438,11 +432,9 @@ class Purchase(models.Model):
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
-        # Генерация уникального 12-значного кода при создании
         if not self.code:
             self.code = get_random_string(12, allowed_chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
         
-        # Установка срока годности, если он задан в товаре
         if not self.pk and self.item and self.item.validity_days:
             self.expires_at = timezone.now() + timedelta(days=self.item.validity_days)
             
@@ -465,7 +457,7 @@ class Attendance(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
     student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='attendances')
     is_present = models.BooleanField(default=False)
-    crystals_granted = models.BooleanField(default=False)  # защита от повторного начисления
+    crystals_granted = models.BooleanField(default=False)
     grade = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(12)])
     crystals_awarded = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(3)])
     created_at = models.DateTimeField(auto_now_add=True)

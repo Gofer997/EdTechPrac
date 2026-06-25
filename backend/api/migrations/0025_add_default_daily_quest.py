@@ -3,7 +3,6 @@ from django.db import migrations
 def add_default_daily_quest(apps, schema_editor):
     DailyQuest = apps.get_model('api', 'DailyQuest')
     
-    # Проверяем, существует ли уже задание, чтобы избежать дубликатов
     if not DailyQuest.objects.filter(quest_type='submit_assignment', target_value=1).exists():
         DailyQuest.objects.create(
             quest_type='submit_assignment',

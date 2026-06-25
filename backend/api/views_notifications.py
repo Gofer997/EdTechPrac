@@ -30,6 +30,5 @@ class NotificationMarkReadView(APIView):
         if ids:
             Notification.objects.filter(recipient=request.user, id__in=ids).update(is_read=True)
         else:
-            # отметить все
             Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
         return Response({'status': 'ok'})
