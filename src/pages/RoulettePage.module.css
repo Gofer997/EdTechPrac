@@ -1,0 +1,191 @@
+.container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.title {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #1e293b;
+}
+
+.balance {
+  text-align: center;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #334155;
+}
+
+.selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.colorButtons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.colorBtn {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  opacity: 0.8;
+}
+
+.colorBtn:hover {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.active {
+  opacity: 1;
+  box-shadow: 0 0 0 3px #fbbf24;
+  transform: scale(1.05);
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.inputGroup label {
+  font-weight: 600;
+  color: #475569;
+}
+
+.input {
+  width: 120px;
+  padding: 8px 12px;
+  border: 2px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.spinButton {
+  background: #f59e0b;
+  border: none;
+  border-radius: 30px;
+  padding: 12px 48px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.spinButton:hover:not(:disabled) {
+  background: #d97706;
+  transform: scale(1.02);
+}
+
+.spinButton:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #dc2626;
+  text-align: center;
+  margin-top: 0.8rem;
+  font-weight: 500;
+}
+
+.result {
+  margin-top: 1.5rem;
+  padding: 1.2rem;
+  border: 2px solid #cbd5e1;
+  border-radius: 16px;
+  text-align: center;
+  background: white;
+}
+
+.resultColor {
+  display: inline-block;
+  padding: 6px 24px;
+  border-radius: 30px;
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+.winMessage {
+  color: #16a34a;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.loseMessage {
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+.newBalance {
+  margin-top: 0.8rem;
+  font-weight: 500;
+}
+
+.history {
+  margin-top: 2rem;
+}
+
+.history h3 {
+  text-align: center;
+  color: #334155;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.table th,
+.table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.table th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+.colorBadge {
+  padding: 3px 12px;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.9rem;
+}
+
+.win {
+  color: #16a34a;
+  font-weight: bold;
+}
+
+.lose {
+  color: #64748b;
+}

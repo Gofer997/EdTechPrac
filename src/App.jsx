@@ -9,6 +9,7 @@ import Schedule from "./pages/Schedule";
 import TeacherStudents from "./pages/TeacherStudents";
 import CurrentLesson from "./pages/CurrentLesson";
 import Badges from "./pages/Badges";
+import Kazik from "./pages/Kazik"
 import "./App.css";
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
       <Route path="/teacher/students" element={<TeacherStudents />} />
       <Route path="/current-lesson" element={<CurrentLesson />} />
       <Route path="/badges" element={<Badges />} />
+      <Route path="/kazik" element={<Kazik />} />
     </Routes>
   )
 }

@@ -176,14 +176,35 @@ const Aside = () => {
                     Магазин
                   </small>
                 </div>
-
                 <Button
                   variant="link"
                   href="/shop"
                   className="w-100 text-start mb-1"
                   style={{ color: "#333", textDecoration: "none", padding: "8px 12px" }}
                 >
-                  Магазин
+                    Магазин
+                </Button>
+
+                <div className="mb-2 mt-3">
+                  <small
+                    className="text-muted text-uppercase"
+                    style={{ fontSize: "11px", letterSpacing: "0.5px" }}
+                  >
+                    Игры
+                  </small>
+                </div>
+
+                <Button
+                  variant="link"
+                  href="/kazik"
+                  className="w-100 text-start mb-1"
+                  style={{
+                    color: "#333",
+                    textDecoration: "none",
+                    padding: "8px 12px",
+                  }}
+                >
+                  Рулетка
                 </Button>
 
                 <div className="mb-2 mt-3">
