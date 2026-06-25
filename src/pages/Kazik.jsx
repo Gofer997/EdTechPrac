@@ -45,7 +45,7 @@ const Kazik = () => {
       const response = await api.get("student/profile/");
       setBalance(response.data.crystals);
     } catch (err) {
-      // ignore
+      console.log("Balance error:", err, response?.data);
     } finally {
       setLoading(false);
     }

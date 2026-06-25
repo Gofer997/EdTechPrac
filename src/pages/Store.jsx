@@ -73,7 +73,7 @@ const Store = () => {
       setUserLevel(response.data.level || 1);
       setBalance(response.data.crystals || 0);
     } catch (err) {
-      // Silent error - might be teacher
+      console.log("Profile error:", err, response?.data);
     }
   };
 

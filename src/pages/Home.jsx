@@ -67,7 +67,7 @@ const Home = () => {
       const response = await api.get("student/monthly-grades/");
       setMonthlyGrades(response.data);
     } catch (err) {
-      // Silent error
+      console.log("Monthly grades error:", err, response?.data);
     }
   };
 
@@ -76,7 +76,7 @@ const Home = () => {
       const response = await api.get("my-badges/");
       setMyBadges(response.data || []);
     } catch (err) {
-      // Silent error
+      console.log("My badges error:", err, response?.data);
     }
   };
 

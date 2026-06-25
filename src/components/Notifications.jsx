@@ -66,7 +66,6 @@ const Notifications = () => {
     fetchUnreadCount();
     setLoading(false);
 
-    // Poll for new notifications every 30 seconds
     const interval = setInterval(() => {
       fetchUnreadCount();
     }, 30000);

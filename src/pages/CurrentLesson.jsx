@@ -132,7 +132,6 @@ function CurrentLesson() {
         dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       }
       
-      // Handle group - it might be an object with id or just an id
       const groupId = typeof currentLesson.group === 'object' ? currentLesson.group.id : currentLesson.group;
       
       await api.post("assignments/", {
