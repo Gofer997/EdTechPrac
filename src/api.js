@@ -4,7 +4,7 @@ const ACCESS_KEY = "access";   // unified key
 const REFRESH_KEY = "refresh";
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/",
+  baseURL: "https://edtechback.onrender.com/api/",
   withCredentials: false,
 });
 
@@ -64,7 +64,7 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const refreshResponse = await axios.post("http://127.0.0.1:8000/api/refresh/", {
+      const refreshResponse = await axios.post("https://edtechback.onrender.com/api/refresh/", {
         refresh: refreshToken,
       });
 
